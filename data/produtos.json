@@ -1,0 +1,164 @@
+[
+  {
+    "id": 1766151341074,
+    "nome": "dfdf",
+    "categoria": "dfdf",
+    "imagem": "/uploads/1766151340992-DALL__E_2024_10_21_16.02.20___A_peaceful_study_environment_designed_as_a_background._A_desk_near_a_window_with_a_laptop__books__and_notebooks_scattered_on_it__along_with_a_chair_an.webp",
+    "variacoes": [
+      {
+        "marca": "dfdf",
+        "preco_custo": 234,
+        "preco_venda": 234,
+        "estoque": 100
+      },
+      {
+        "marca": "234",
+        "preco_custo": 34,
+        "preco_venda": 34,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261173832,
+    "nome": "eef",
+    "categoria": "efefe",
+    "imagem": "/uploads/1766261173683-photo_5184194202982615888_y.jpg",
+    "variacoes": [
+      {
+        "marca": "dvdvd",
+        "preco_custo": 565,
+        "preco_venda": 3465,
+        "estoque": 100
+      },
+      {
+        "marca": "ery",
+        "preco_custo": 57,
+        "preco_venda": 5757,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261212958,
+    "nome": "4646",
+    "categoria": "4646",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "43",
+        "preco_custo": 46,
+        "preco_venda": 4,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261380613,
+    "nome": "46dsf",
+    "categoria": "sdf234r",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "34",
+        "preco_custo": 34,
+        "preco_venda": 34,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261396437,
+    "nome": "3434",
+    "categoria": "3434",
+    "imagem": "/uploads/1766261396358-DALL__E_2024_10_21_16.02.20___A_peaceful_study_environment_designed_as_a_background._A_desk_near_a_window_with_a_laptop__books__and_notebooks_scattered_on_it__along_with_a_chair_an.webp",
+    "variacoes": [
+      {
+        "marca": "34",
+        "preco_custo": 34,
+        "preco_venda": 234,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261409679,
+    "nome": "1",
+    "categoria": "3",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "fhfhf",
+        "preco_custo": 544,
+        "preco_venda": 3434,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261419573,
+    "nome": "3434",
+    "categoria": "3434",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "3434",
+        "preco_custo": 3434,
+        "preco_venda": 3434,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261428567,
+    "nome": "3434",
+    "categoria": "3434",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "34343",
+        "preco_custo": 3434,
+        "preco_venda": 3434,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261436127,
+    "nome": "343434",
+    "categoria": "43434",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "343434",
+        "preco_custo": 34343,
+        "preco_venda": 43434,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766261443277,
+    "nome": "343434",
+    "categoria": "434343434",
+    "imagem": "",
+    "variacoes": [
+      {
+        "marca": "43434343",
+        "preco_custo": 4343,
+        "preco_venda": 434343,
+        "estoque": 100
+      }
+    ],
+    "ativo": true
+  }
+]

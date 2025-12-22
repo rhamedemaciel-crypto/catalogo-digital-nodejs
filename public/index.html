@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Digital</title>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Loja do Cliente</h1>
+        <p>Escolha seus produtos e peça no WhatsApp</p>
+    </header>
+
+    <div id="lista-produtos" class="container-produtos">
+        <p class="aviso-vazio">Carregando produtos...</p>
+    </div>
+    <div id="modal-compra" class="modal-overlay">
+        <div class="modal-content">
+            <button class="fechar-modal" onclick="fecharModal()">&times;</button>
+            
+            <img id="modal-img" src="" alt="Produto">
+            <h2 id="modal-titulo">Nome do Produto</h2>
+            <p id="modal-categoria" style="color: #666; margin-top: -10px;">Categoria</p>
+
+            <div class="opcoes-compra">
+                <h3>Escolha a opção:</h3>
+                <div id="lista-variacoes">
+                    </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="preco-final">
+                    Total: <span id="preco-total">R$ 0,00</span>
+                </div>
+                <button onclick="finalizarPedido('5583999999999')" class="btn-whatsapp">
+                    Enviar Pedido 📱
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="btn-carrinho" class="botao-flutuante" onclick="abrirCarrinho()" style="display: none;">
+        🛒 <span id="contador-carrinho">0</span>
+    </div>
+
+    <div id="modal-carrinho" class="modal-overlay">
+        <div class="modal-content">
+            <button class="fechar-modal" onclick="fecharCarrinho()">&times;</button>
+            <h2>Seu Pedido</h2>
+            
+            <div id="itens-carrinho" class="lista-carrinho-scroll">
+                </div>
+
+            <div class="modal-footer">
+                <div class="preco-final">
+                    Total: <span id="total-carrinho">R$ 0,00</span>
+                </div>
+                <button onclick="enviarPedidoZap('5583999999999')" class="btn-whatsapp">
+                    Finalizar Compra ✅
+                </button>
+            </div>
+        </div>
+    </div>
+    
+
+    <script src="js/script.js"></script>
+</body>
+</html>
