@@ -24,54 +24,78 @@ header {
 
 h1 { margin: 0; color: #333; }
 
-/* Grade de Produtos */
-.container-produtos {
+/* --- LAYOUT DA LOJA (GRID) --- */
+.container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 15px;
+    /* Isso aqui é mágico: cria colunas automáticas de no mínimo 220px */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    max-width: 1200px; /* Limita a largura total para não esticar demais em telas grandes */
+    margin: 0 auto;
 }
 
-/* Card do Produto */
+/* --- ESTILO DO CARTÃO DE PRODUTO --- */
 .card {
-    background: var(--cor-card);
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    text-align: center;
-    padding-bottom: 10px;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 12px; /* Bordas arredondadas */
+    overflow: hidden; /* Garante que a imagem não saia da borda */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column; /* Organiza itens um abaixo do outro */
 }
 
+.card:hover {
+    transform: translateY(-5px); /* Efeito de subir ao passar o mouse */
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+/* --- CONTROLE DA IMAGEM (O SEGREDO) --- */
 .card img {
     width: 100%;
-    height: 150px;
-    object-fit: cover;
-    background-color: #ddd; 
+    height: 200px; /* Altura fixa! Isso impede que fiquem gigantes */
+    object-fit: cover; /* Corta a imagem para caber no quadrado sem esticar */
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* --- CORPO DO TEXTO DO CARD --- */
+.card-info {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-grow: 1; /* Ocupa o espaço restante */
 }
 
 .card h3 {
-    font-size: 16px;
-    margin: 10px 0 5px 0;
+    margin: 0 0 5px 0;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.card .preco {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #28a745; /* Verde preço */
+    margin: 10px 0;
 }
 
 .card button {
-    background-color: var(--cor-primaria);
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
     color: white;
     border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
+    border-radius: 6px;
     cursor: pointer;
-    width: 90%;
+    font-weight: bold;
+    transition: background 0.2s;
 }
 
 .card button:hover {
-    opacity: 0.9;
-}
-
-.aviso-vazio {
-    text-align: center;
-    color: #666;
-    margin-top: 50px;
-    grid-column: 1 / -1;
+    background-color: #0056b3;
 }
 /* --- ESTILOS DO MODAL --- */
 .modal-overlay {
@@ -196,3 +220,73 @@ h1 { margin: 0; color: #333; }
     border-bottom: 1px dashed #ccc;
 }
 .btn-lixeira { color: red; cursor: pointer; margin-left: 10px; }
+/* --- ESTILOS NOVOS DA PESQUISA E CATEGORIAS --- */
+
+.filtros-container {
+    max-width: 1200px;
+    margin: 0 auto 20px auto;
+    padding: 0 15px;
+}
+
+/* Barra de Pesquisa */
+.search-box {
+    position: relative;
+    margin-bottom: 15px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 12px 15px 12px 45px; /* Espaço para o ícone */
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    font-size: 16px;
+    outline: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-sizing: border-box; /* Importante para não quebrar layout */
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    opacity: 0.5;
+}
+
+/* Menu de Categorias (Scroll Horizontal no Mobile) */
+.menu-categorias {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto; /* Permite rolar para o lado no celular */
+    white-space: nowrap;
+    padding-bottom: 5px; /* Espaço para a barra de rolagem não colar */
+    scrollbar-width: none; /* Esconde barra no Firefox */
+}
+
+.menu-categorias::-webkit-scrollbar {
+    display: none; /* Esconde barra no Chrome */
+}
+
+.btn-categoria {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.3s ease;
+}
+
+.btn-categoria:hover {
+    background: #f0f0f0;
+}
+
+.btn-categoria.ativo {
+    background: #007bff; /* Azul principal */
+    color: white;
+    border-color: #007bff;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+}
