@@ -3,7 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const session = require('express-session'); // <--- ADICIONADO: Segurança
+const session = require('express-session');
 
 const app = express();
 const PORT = 3000;
@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json()); 
 app.use(express.static('public')); 
 
-// --- ADICIONADO: CONFIGURAÇÃO DA SESSÃO ---
+// --- CONFIGURAÇÃO DA SESSÃO ---
 app.use(session({
     secret: 'segredo-super-secreto-do-catalogo',
     resave: false,
@@ -35,11 +35,12 @@ const upload = multer({ storage: storage });
 
 // --- BANCO DE DADOS ---
 const ARQUIVO_PRODUTOS = path.join(__dirname, 'data', 'produtos.json');
-const ARQUIVO_VENDAS = path.join(__dirname, 'data', 'vendas.json'); // Mantido!
+const ARQUIVO_VENDAS = path.join(__dirname, 'data', 'vendas.json');
+const ARQUIVO_CUPONS = path.join(__dirname, 'data', 'cupons.json');
 
 function lerJSON(arquivo) {
     if (!fs.existsSync(arquivo)) {
-        fs.writeFileSync(arquivo, '[]'); // Cria se não existir para evitar erro
+        fs.writeFileSync(arquivo, '[]');
     }
     const dados = fs.readFileSync(arquivo);
     return JSON.parse(dados || '[]');
@@ -50,13 +51,13 @@ function salvarJSON(arquivo, dados) {
 }
 
 // ========================================================
-// 🔐 ÁREA DE SEGURANÇA (NOVO)
+// 🔐 ÁREA DE SEGURANÇA
 // ========================================================
 
 // 1. Rota de Login
 app.post('/api/login', (req, res) => {
     const { senha } = req.body;
-    if (senha === 'admin123') { // Defina sua senha aqui
+    if (senha === 'admin123') { 
         req.session.usuarioLogado = true;
         res.json({ success: true });
     } else {
@@ -67,7 +68,6 @@ app.post('/api/login', (req, res) => {
 // 2. Rota Protegida do Admin
 app.get('/admin', (req, res) => {
     if (req.session.usuarioLogado) {
-        // Busca o arquivo na pasta 'private' (que o usuário não vê direto)
         res.sendFile(path.join(__dirname, 'private', 'admin.html'));
     } else {
         res.redirect('/login.html');
@@ -75,21 +75,20 @@ app.get('/admin', (req, res) => {
 });
 
 // ========================================================
-// 🛒 API DO SITE (Mantendo suas rotas)
+// 📦 API DE PRODUTOS
 // ========================================================
 
-// 3. Rota para PEGAR produtos
+// Listar Produtos
 app.get('/api/produtos', (req, res) => {
     const produtos = lerJSON(ARQUIVO_PRODUTOS);
     res.json(produtos);
 });
 
-// 4. Rota para CADASTRAR produto
+// Cadastrar Produto
 app.post('/api/produtos', upload.single('imagem'), (req, res) => {
     try {
         const produtos = lerJSON(ARQUIVO_PRODUTOS);
         
-        // Tratamento de variações vindo como string ou objeto
         let variacoes = [];
         if (typeof req.body.variacoes === 'string') {
             try { variacoes = JSON.parse(req.body.variacoes); } catch(e) { variacoes = []; }
@@ -115,7 +114,7 @@ app.post('/api/produtos', upload.single('imagem'), (req, res) => {
     }
 });
 
-// 5. Rota para DELETAR produto
+// Deletar Produto Inteiro
 app.delete('/api/produtos/:id', (req, res) => {
     const id = parseInt(req.params.id);
     let produtos = lerJSON(ARQUIVO_PRODUTOS);
@@ -124,21 +123,142 @@ app.delete('/api/produtos/:id', (req, res) => {
     res.json({ message: 'Produto deletado!' });
 });
 
-// 6. Rota para REGISTRAR VENDA (MANTIDA!)
+// Deletar APENAS uma variação
+app.delete('/api/produtos/:id/variacao/:index', (req, res) => {
+    const idProduto = parseInt(req.params.id);
+    const indexVariacao = parseInt(req.params.index);
+    
+    let produtos = lerJSON(ARQUIVO_PRODUTOS);
+    const produtoAlvo = produtos.find(p => p.id === idProduto);
+
+    if (produtoAlvo) {
+        produtoAlvo.variacoes.splice(indexVariacao, 1);
+        salvarJSON(ARQUIVO_PRODUTOS, produtos);
+        res.json({ message: 'Variação removida com sucesso!' });
+    } else {
+        res.status(404).json({ message: 'Produto não encontrado.' });
+    }
+});
+
+// ========================================================
+// 🎟️ API DE CUPONS
+// ========================================================
+
+// Listar Cupons (Para o Admin)
+app.get('/api/cupons', (req, res) => {
+    res.json(lerJSON(ARQUIVO_CUPONS));
+});
+
+// Criar Cupom
+app.post('/api/cupons', (req, res) => {
+    const cupons = lerJSON(ARQUIVO_CUPONS);
+    const { codigo, desconto } = req.body;
+    
+    if (cupons.find(c => c.codigo === codigo.toUpperCase())) {
+        return res.status(400).json({ message: 'Código já existe' });
+    }
+
+    cupons.push({ codigo: codigo.toUpperCase(), desconto: parseInt(desconto) });
+    salvarJSON(ARQUIVO_CUPONS, cupons);
+    res.json({ message: 'Cupom criado' });
+});
+
+// Deletar Cupom
+app.delete('/api/cupons/:codigo', (req, res) => {
+    const codigo = req.params.codigo.toUpperCase();
+    let cupons = lerJSON(ARQUIVO_CUPONS);
+    const novaLista = cupons.filter(c => c.codigo !== codigo);
+    salvarJSON(ARQUIVO_CUPONS, novaLista);
+    res.json({ message: 'Cupom deletado' });
+});
+
+// Validar Cupom (Para o Carrinho)
+app.get('/api/cupom/:codigo', (req, res) => {
+    const codigo = req.params.codigo.toUpperCase();
+    const cupons = lerJSON(ARQUIVO_CUPONS);
+    const cupom = cupons.find(c => c.codigo === codigo);
+
+    if (cupom) {
+        res.json({ valido: true, desconto: cupom.desconto });
+    } else {
+        res.json({ valido: false });
+    }
+});
+
+// ========================================================
+// 💰 VENDAS E ESTOQUE (LÓGICA NOVA)
+// ========================================================
+
+// 1. Listar Vendas (Para o Admin ver os pedidos)
+app.get('/api/vendas', (req, res) => {
+    const vendas = lerJSON(ARQUIVO_VENDAS);
+    res.json(vendas.reverse()); // Mostra o mais novo primeiro
+});
+
+// 2. Registrar Nova Venda (Vinda do Site)
 app.post('/api/venda', (req, res) => {
     const vendas = lerJSON(ARQUIVO_VENDAS);
+    
     const novaVenda = {
         id_pedido: Date.now(),
-        data: new Date().toISOString(),
+        data: new Date().toLocaleString('pt-BR'),
         cliente: req.body.cliente || 'Cliente Site',
-        itens: req.body.itens,
+        itens: req.body.itens, // Array com produto, marca, qtd
         total: req.body.total,
-        lucro_estimado: req.body.lucro_estimado || 0
+        status: 'Pendente' // <--- STATUS IMPORTANTE
     };
 
     vendas.push(novaVenda);
     salvarJSON(ARQUIVO_VENDAS, vendas);
-    res.json({ message: 'Venda registrada!' });
+    
+    res.json({ message: 'Pedido registrado!', id: novaVenda.id_pedido });
+});
+
+// 3. CONFIRMAR VENDA E BAIXAR ESTOQUE (A Mágica)
+app.post('/api/venda/:id/confirmar', (req, res) => {
+    const idPedido = parseInt(req.params.id);
+    
+    let vendas = lerJSON(ARQUIVO_VENDAS);
+    let produtos = lerJSON(ARQUIVO_PRODUTOS);
+    
+    // Acha a venda
+    const vendaIndex = vendas.findIndex(v => v.id_pedido === idPedido);
+    
+    if (vendaIndex === -1) return res.status(404).json({ message: 'Venda não encontrada' });
+    if (vendas[vendaIndex].status === 'Aprovado') return res.status(400).json({ message: 'Venda já foi aprovada antes!' });
+
+    // --- LÓGICA DE SUBTRAÇÃO DE ESTOQUE ---
+    const itensVenda = vendas[vendaIndex].itens;
+    let erros = [];
+
+    itensVenda.forEach(itemVenda => {
+        // Encontra o produto pelo nome
+        const produto = produtos.find(p => p.nome === itemVenda.produto);
+        
+        if (produto) {
+            // Encontra a variação pela marca (Ex: "Heineken")
+            const variacao = produto.variacoes.find(v => v.marca === itemVenda.marca);
+            
+            if (variacao) {
+                if (variacao.estoque >= itemVenda.qtd) {
+                    variacao.estoque -= itemVenda.qtd; // Subtrai aqui!
+                } else {
+                    erros.push(`Estoque insuficiente para ${itemVenda.produto} (${itemVenda.marca})`);
+                }
+            }
+        }
+    });
+
+    if (erros.length > 0) {
+        return res.status(400).json({ message: 'Erro ao baixar estoque', detalhes: erros });
+    }
+
+    // Se deu tudo certo, salva os novos estoques e atualiza o status
+    salvarJSON(ARQUIVO_PRODUTOS, produtos);
+    vendas[vendaIndex].status = 'Aprovado';
+    salvarJSON(ARQUIVO_VENDAS, vendas);
+
+    res.json({ message: 'Venda confirmada e estoque atualizado com sucesso!' });
 });
 
 // Iniciar

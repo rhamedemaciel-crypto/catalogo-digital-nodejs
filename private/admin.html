@@ -3,37 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Administrativo</title>
-    <link rel="stylesheet" href="css/style.css">
-    <style>
-        /* CSS Específico do Painel Admin */
-        body { background-color: #e9ecef; }
-        .admin-container { 
-            max-width: 800px; 
-            margin: 30px auto; 
-            background: white; 
-            padding: 30px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    <title>QG do Bruxo | Painel Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Russo+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css"> <style>
+        /* --- ESTILOS ESPECÍFICOS DO ADMIN (Dark Mode Tropa) --- */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            color: #e0e0e0; 
         }
         
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
-        input[type="text"], input[type="number"], select { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ccc; 
-            border-radius: 6px; 
-            box-sizing: border-box; 
+        .admin-container { 
+            max-width: 900px; 
+            margin: 40px auto; 
+            background: rgba(18, 18, 18, 0.95); /* Fundo bem escuro */
+            backdrop-filter: blur(15px);
+            padding: 40px; 
+            border-radius: 20px; 
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); 
+            border: 1px solid #333;
+        }
+        
+        .header-admin { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
         }
 
-        /* Estilo da Área de Variações (Marcas) */
-        .variacoes-box { 
-            background: #f8f9fa; 
-            padding: 15px; 
+        h2, h3 {
+            font-family: 'Russo One', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, #00ff88, #9d00ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .link-voltar { color: #888; text-decoration: none; font-weight: bold; }
+        .link-voltar:hover { color: #00ff88; }
+
+        /* --- FORMULÁRIOS --- */
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #ffd700; }
+        
+        input[type="text"], input[type="number"], select, input[type="file"] { 
+            width: 100%; 
+            padding: 12px; 
+            background: #0a0a0a; 
+            border: 1px solid #333; 
             border-radius: 8px; 
-            border: 1px solid #dee2e6;
-            margin-bottom: 15px;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus { border-color: #00ff88; }
+
+        /* --- VARIAÇÕES --- */
+        .variacoes-box { 
+            background: rgba(255, 255, 255, 0.03); 
+            padding: 20px; 
+            border-radius: 10px; 
+            border: 1px dashed #444;
+            margin-bottom: 20px;
         }
         .variacao-row { 
             display: grid; 
@@ -43,72 +83,103 @@
             align-items: center; 
         }
         
-        .btn-add { background: #28a745; color: white; border: none; padding: 8px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        .btn-remove { background: #dc3545; color: white; border: none; padding: 8px 12px; cursor: pointer; border-radius: 5px; }
+        /* --- BOTÕES --- */
+        button { cursor: pointer; border-radius: 8px; font-weight: bold; border: none; text-transform: uppercase; }
+        .btn-add { background: #333; color: #00ff88; border: 1px solid #00ff88; padding: 8px 15px; }
+        .btn-remove { background: #330000; color: #ff4444; border: 1px solid #ff4444; padding: 8px 12px; }
         
-        button[type="submit"] { 
-            width: 100%; 
-            padding: 15px; 
-            background: #007bff; 
-            color: white; 
-            border: none; 
-            font-size: 18px; 
-            cursor: pointer; 
-            border-radius: 8px; 
-            margin-top: 20px; 
-            font-weight: bold;
+        .btn-salvar { 
+            width: 100%; padding: 15px; 
+            background: linear-gradient(45deg, #00ff88, #00cc6a); 
+            color: black; font-size: 18px; margin-top: 20px; 
         }
-        button[type="submit"]:hover { background: #0056b3; }
-        
-        .header-admin { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .link-voltar { color: #666; text-decoration: none; }
+
+        hr { margin: 40px 0; border: 0; border-top: 1px solid #333; }
+
+        /* --- CARDS (Produtos e Pedidos) --- */
+        .card-item { 
+            background: #1a1a1a; /* Fundo cinza escuro para os cartões */
+            border: 1px solid #333; 
+            padding: 20px; 
+            margin-bottom: 15px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
 
     <div class="admin-container">
         <div class="header-admin">
-            <h2>📦 Cadastro de Produto</h2>
-            <a href="/" class="link-voltar">← Voltar para a Loja</a>
+            <h2>📦 NOVO DROP</h2>
+            <a href="/" class="link-voltar">← VOLTAR PARA A LOJA</a>
         </div>
 
         <form id="form-produto">
             <div class="form-group">
-                <label>Nome do Produto</label>
-                <input type="text" name="nome" placeholder="Ex: Hambúrguer, Camiseta, Cerveja" required>
+                <label>NOME DO ITEM</label>
+                <input type="text" name="nome" placeholder="Ex: Creatina Pura, Strap de Punho..." required>
             </div>
             
             <div class="form-group">
-                <label>Categoria</label>
-                <input type="text" name="categoria" placeholder="Ex: Bebidas, Lanches">
+                <label>CATEGORIA</label>
+                <input type="text" name="categoria" placeholder="Ex: Suplementos, Gear, Vestuário">
             </div>
 
             <div class="form-group">
-                <label>Foto do Produto</label>
-                <input type="file" name="imagem" accept="image/*">
+                <label>FOTO DO PRODUTO</label>
+                <input type="file" name="imagem" accept="image/*" style="padding-top: 10px;">
             </div>
 
-            <hr>
-
-            <div class="header-admin">
-                <h3>Variações (Marcas/Tamanhos)</h3>
-                <button type="button" class="btn-add" onclick="adicionarLinhaVariacao()">+ Nova Opção</button>
-            </div>
-
-            <div id="container-variacoes">
+            <div class="variacoes-box">
+                <div class="header-admin" style="margin-bottom: 15px; border-bottom: none; padding: 0;">
+                    <h3 style="margin:0; font-size: 1.2rem; color: #fff;">VARIAÇÕES & ESTOQUE</h3>
+                    <button type="button" class="btn-add" onclick="adicionarLinhaVariacao()">+ OPÇÃO</button>
                 </div>
-                <hr style="margin: 30px 0; border: 1px solid #eee;">
+                <div id="container-variacoes"></div>
+            </div>
 
-        <h2>Gerenciar Produtos Existentes</h2>
-        <div id="lista-produtos-admin" style="display: grid; gap: 10px;">
+            <button type="submit" class="btn-salvar">💾 SALVAR NO ESTOQUE</button>
+        </form>
+
+        <hr>
+
+        <div class="header-admin">
+            <h2>📋 INVENTÁRIO</h2>
+        </div>
+        <div id="lista-produtos-admin"></div>
+
+        <hr>
+
+        <div class="header-admin">
+            <h2>🎟️ CUPONS SECRETOS</h2>
+        </div>
+        <div style="background: rgba(157, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #9d00ff;">
+            <form id="form-cupom" style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 2;">
+                    <label style="font-size: 12px; color: #9d00ff;">CÓDIGO</label>
+                    <input type="text" id="codigo-cupom" placeholder="Ex: BRUXO10" required style="border-color: #9d00ff;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 12px; color: #9d00ff;">DESCONTO (%)</label>
+                    <input type="number" id="valor-cupom" placeholder="10" required style="border-color: #9d00ff;">
+                </div>
+                <button type="submit" style="background: #9d00ff; color: white; padding: 12px 20px; box-shadow: 0 0 10px #9d00ff;">CRIAR</button>
+            </form>
+        </div>
+        <div id="lista-cupons"></div>
+
+        <hr>
+
+        <div class="header-admin">
+            <h2>💰 ÚLTIMOS PEDIDOS</h2>
+            <button onclick="carregarVendas()" style="background: #444; color: white; padding: 8px 15px;">🔄 ATUALIZAR</button>
+        </div>
+        <div id="lista-vendas">
             </div>
 
     </div>
 
-            <button type="submit">💾 Salvar Produto no Estoque</button>
-        </form>
-    </div>
-
-    <script src="js/admin.js"></script>
+    <script src="/js/admin.js"></script>
 </body>
 </html>

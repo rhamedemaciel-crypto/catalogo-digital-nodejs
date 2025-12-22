@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id_pedido": 1766371623430,
+    "data": "21/12/2025, 23:47:03",
+    "cliente": "Cliente via WhatsApp",
+    "itens": [
+      {
+        "produto": "dfdf",
+        "marca": "dfdf",
+        "qtd": 36
+      }
+    ],
+    "total": 8424,
+    "status": "Aprovado"
+  }
+]

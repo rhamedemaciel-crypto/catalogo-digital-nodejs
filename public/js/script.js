@@ -201,32 +201,62 @@ async function aplicarCupom() {
     } catch(e) { console.error(e); }
 }
 
-function enviarPedidoZap(tel) {
+// Função Atualizada: Salva no banco -> Depois abre o Zap
+async function enviarPedidoZap(tel) {
     if(carrinho.length === 0) return;
     
-    // Calcula totais
+    // 1. Prepara os dados para o Servidor
     let totalBruto = carrinho.reduce((acc, item) => acc + item.total, 0);
-    let totalLiquido = totalBruto * (1 - descontoAtual/100);
+    let totalFinal = totalBruto * (1 - descontoAtual/100);
 
-    let msg = `*NOVO PEDIDO DO SITE!* 🛒%0A%0A`;
-    
-    carrinho.forEach(item => {
-        msg += `- ${item.qtd}x ${item.produto} (${item.marca}): R$ ${item.total.toFixed(2)}%0A`;
-    });
+    const pedidoParaSalvar = {
+        cliente: "Cliente via WhatsApp", // Futuramente pode ter um input de nome
+        itens: carrinho.map(item => ({
+            produto: item.produto,
+            marca: item.marca,
+            qtd: item.qtd
+        })),
+        total: totalFinal
+    };
 
-    msg += `%0A--------------------------------`;
-    if(descontoAtual > 0) {
-        msg += `%0ASubtotal: R$ ${totalBruto.toFixed(2)}`;
-        msg += `%0ADesconto: ${descontoAtual}%`;
-        msg += `%0A*TOTAL A PAGAR: R$ ${totalLiquido.toFixed(2)}*`;
-    } else {
-        msg += `%0A*TOTAL A PAGAR: R$ ${totalBruto.toFixed(2)}*`;
+    // 2. Envia para o Backend (API)
+    try {
+        const resposta = await fetch('/api/venda', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pedidoParaSalvar)
+        });
+
+        if (resposta.ok) {
+            // 3. Se salvou, gera a mensagem e abre o WhatsApp
+            console.log("Pedido salvo no sistema!");
+            
+            let msg = `*NOVO PEDIDO!* 🛒%0A%0A`;
+            carrinho.forEach(item => {
+                msg += `- ${item.qtd}x ${item.produto} (${item.marca}): R$ ${item.total.toFixed(2)}%0A`;
+            });
+
+            if(descontoAtual > 0) {
+                msg += `%0A*Subtotal:* R$ ${totalBruto.toFixed(2)}`;
+                msg += `%0ADesconto: ${descontoAtual}%`;
+                msg += `%0A*TOTAL A PAGAR: R$ ${totalFinal.toFixed(2)}*`;
+            } else {
+                msg += `%0A*TOTAL A PAGAR: R$ ${totalBruto.toFixed(2)}*`;
+            }
+
+            // Limpa o carrinho após o sucesso
+            carrinho = [];
+            atualizarContador();
+            fecharCarrinho();
+
+            window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+        } else {
+            alert("Erro ao processar pedido. Tente novamente.");
+        }
+    } catch (erro) {
+        console.error(erro);
+        alert("Erro de conexão com o servidor.");
     }
-    
-    // URL para Baixa de Estoque (Fase 2 - Futuro)
-    // msg += `%0A%0AAdmin: Clique para confirmar baixa: seudesite.com/baixa...`;
-
-    window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
 }
 
 function fecharModal() { document.getElementById('modal-compra').style.display = 'none'; }

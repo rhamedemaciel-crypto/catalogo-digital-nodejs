@@ -1,292 +1,357 @@
-/* public/css/style.css */
-
-:root {
-    --cor-primaria: #FF5733; 
-    --cor-fundo: #f4f4f4;
-    --cor-card: #ffffff;
-}
-
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--cor-fundo);
+/* --- RESET GERAL --- */
+* {
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
 }
 
+/* --- FUNDO E CORPO (TEMA DARK) --- */
+body {
+    /* Corrigido: Nome sem espaços */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95)), url('../uploads/fundo-tropa.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: #e0e0e0;
+    min-height: 100vh;
+}
+
+/* --- CABEÇALHO --- */
 header {
     text-align: center;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    padding: 50px 20px 30px;
+    background: linear-gradient(to bottom, rgba(0,0,0,1), transparent);
+}
+
+header h1 {
+    font-family: 'Russo One', sans-serif;
+    font-size: 3.5rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 5px;
+    
+    /* EFEITO DEGRADÊ NO TEXTO (VERDE + ROXO) */
+    background: linear-gradient(90deg, #00ff88, #9d00ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(157, 0, 255, 0.5));
+}
+
+header p {
+    color: #ffd700; /* Amarelo Ouro */
+    font-size: 1.1rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* --- PESQUISA --- */
+.filtros-container {
+    max-width: 1200px;
+    margin: 0 auto 30px auto;
+    padding: 0 20px;
+}
+
+.search-box {
+    position: relative;
     margin-bottom: 20px;
 }
 
-h1 { margin: 0; color: #333; }
-
-/* --- LAYOUT DA LOJA (GRID) --- */
-.container {
-    display: grid;
-    /* Isso aqui é mágico: cria colunas automáticas de no mínimo 220px */
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
-    padding: 20px;
-    max-width: 1200px; /* Limita a largura total para não esticar demais em telas grandes */
-    margin: 0 auto;
+.search-box input {
+    width: 100%;
+    padding: 15px 15px 15px 50px;
+    background: rgba(20, 20, 20, 0.8);
+    border: 1px solid #444;
+    border-radius: 50px; /* Bem redondo */
+    font-size: 16px;
+    color: white;
+    outline: none;
+    transition: 0.3s;
 }
 
-/* --- ESTILO DO CARTÃO DE PRODUTO --- */
-.card {
-    background: white;
-    border: 1px solid #eee;
-    border-radius: 12px; /* Bordas arredondadas */
-    overflow: hidden; /* Garante que a imagem não saia da borda */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    transition: transform 0.2s, box-shadow 0.2s;
+.search-box input:focus {
+    border-color: #9d00ff; /* Roxo ao clicar */
+    box-shadow: 0 0 15px rgba(157, 0, 255, 0.3);
+}
+
+.search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+}
+
+/* --- CATEGORIAS --- */
+.menu-categorias {
     display: flex;
-    flex-direction: column; /* Organiza itens um abaixo do outro */
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: none; /* Esconde barra scroll Firefox */
+}
+.menu-categorias::-webkit-scrollbar { display: none; /* Esconde barra scroll Chrome */ }
+
+.btn-categoria {
+    background: transparent;
+    border: 1px solid #444;
+    padding: 10px 25px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #ccc;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.btn-categoria:hover {
+    border-color: #ffd700;
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.btn-categoria.ativo {
+    background: #9d00ff; /* Roxo */
+    border-color: #9d00ff;
+    color: white;
+    box-shadow: 0 0 15px rgba(157, 0, 255, 0.4);
+}
+
+/* --- GRID DE PRODUTOS --- */
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 25px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto 80px auto;
+}
+
+.card {
+    /* Efeito de Vidro Escuro */
+    background: rgba(25, 25, 25, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: 0.3s;
+    position: relative;
 }
 
 .card:hover {
-    transform: translateY(-5px); /* Efeito de subir ao passar o mouse */
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    transform: translateY(-5px);
+    border-color: #00ff88; /* Borda Verde Neon no hover */
+    box-shadow: 0 10px 30px rgba(0, 255, 136, 0.15);
 }
 
-/* --- CONTROLE DA IMAGEM (O SEGREDO) --- */
 .card img {
     width: 100%;
-    height: 200px; /* Altura fixa! Isso impede que fiquem gigantes */
-    object-fit: cover; /* Corta a imagem para caber no quadrado sem esticar */
-    border-bottom: 1px solid #f0f0f0;
+    height: 250px;
+    object-fit: cover;
+    border-bottom: 1px solid #333;
+    transition: 0.3s;
 }
 
-/* --- CORPO DO TEXTO DO CARD --- */
+.card:hover img {
+    transform: scale(1.05); /* Zoom suave na imagem */
+}
+
 .card-info {
-    padding: 15px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
+    flex-grow: 1;
     justify-content: space-between;
-    flex-grow: 1; /* Ocupa o espaço restante */
 }
 
 .card h3 {
+    font-family: 'Russo One', sans-serif;
     margin: 0 0 5px 0;
-    font-size: 1.1em;
-    color: #333;
+    font-size: 1.3em;
+    color: #fff;
+    text-transform: uppercase;
+}
+
+.card small {
+    color: #888;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .card .preco {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #28a745; /* Verde preço */
-    margin: 10px 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    color: #ffd700; /* Preço Amarelo Ouro */
+    margin: 15px 0;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
 }
 
 .card button {
     width: 100%;
-    padding: 10px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 6px;
+    padding: 12px;
+    background: transparent;
+    color: #00ff88;
+    border: 2px solid #00ff88;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s;
+    font-weight: 800;
+    text-transform: uppercase;
+    transition: 0.3s;
+    letter-spacing: 1px;
 }
 
 .card button:hover {
-    background-color: #0056b3;
+    background: #00ff88;
+    color: #000;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
 }
-/* --- ESTILOS DO MODAL --- */
+
+/* --- MODAIS (POP-UPS) --- */
 .modal-overlay {
-    display: none; /* Escondido por padrão */
+    display: none;
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.7); /* Fundo escuro transparente */
-    z-index: 1000;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
     justify-content: center;
     align-items: center;
+    padding: 20px;
 }
 
 .modal-content {
-    background: white;
-    width: 90%;
-    max-width: 400px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 25px;
     border-radius: 15px;
-    padding: 20px;
+    width: 100%;
+    max-width: 450px;
     position: relative;
-    animation: subir 0.3s ease;
+    box-shadow: 0 0 50px rgba(157, 0, 255, 0.2); /* Brilho Roxo no fundo */
 }
 
-@keyframes subir {
-    from { transform: translateY(50px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+.modal-content h2 {
+    font-family: 'Russo One', sans-serif;
+    color: white;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.modal-content img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #333;
+}
+
+.opcao-item {
+    display: block;
+    margin: 10px 0;
+    padding: 12px;
+    background: #252525;
+    border: 1px solid #333;
+    color: #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.opcao-item:hover {
+    border-color: #ffd700;
+}
+
+.opcao-item input { margin-right: 10px; }
+
+/* Input Quantidade */
+.qtd-control input {
+    background: #222;
+    border: 1px solid #444;
+    color: #00ff88;
+    padding: 10px;
+    font-size: 18px;
+    border-radius: 5px;
+    width: 80px;
+    text-align: center;
+}
+
+/* Botão Confirmar (WhatsApp) */
+.btn-whatsapp {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(45deg, #00ff88, #00cc6a);
+    color: black;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 800;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+    transition: 0.3s;
+}
+
+.btn-whatsapp:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
 }
 
 .fechar-modal {
     position: absolute;
     top: 10px; right: 15px;
     background: none; border: none;
-    font-size: 30px; cursor: pointer; color: #aaa;
+    color: #666; font-size: 30px; cursor: pointer;
 }
+.fechar-modal:hover { color: #fff; }
 
-#modal-img {
-    width: 100px; height: 100px;
-    object-fit: cover;
-    border-radius: 50%;
-    margin: 0 auto 10px auto;
-    display: block;
-    border: 3px solid var(--cor-primaria);
-}
+.modal-footer { margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; }
+.preco-final { text-align: center; font-size: 1.5em; font-weight: bold; color: #ffd700; margin-bottom: 15px; }
 
-.opcao-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    border: 1px solid #eee;
-    margin-bottom: 5px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.opcao-item:hover { background-color: #f9f9f9; }
-.opcao-item input { margin-right: 10px; }
-
-.modal-footer {
-    margin-top: 20px;
-    border-top: 1px solid #eee;
-    padding-top: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.preco-final { font-size: 1.2em; font-weight: bold; color: #333; }
-
-.btn-whatsapp {
-    background-color: #25D366; /* Verde do Zap */
-    color: white;
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-weight: bold;
-    text-decoration: none;
-    display: inline-block;
-    border: none;
-    cursor: pointer;
-}
-/* --- ESTILO DO CARRINHO --- */
+/* --- CARRINHO FLUTUANTE --- */
 .botao-flutuante {
     position: fixed;
-    bottom: 20px; right: 20px;
-    background-color: var(--cor-primaria);
-    color: white;
-    width: 60px; height: 60px;
+    bottom: 25px; right: 25px;
+    background: #ffd700; /* Amarelo Ouro */
+    color: black;
+    width: 65px; height: 65px;
     border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: flex; justify-content: center; align-items: center;
+    font-size: 28px;
     cursor: pointer;
-    z-index: 2000;
-    transition: transform 0.2s;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    z-index: 1000;
+    transition: 0.3s;
 }
 
-.botao-flutuante:hover { transform: scale(1.1); }
+.botao-flutuante:hover {
+    transform: scale(1.1);
+    background: #fff;
+}
 
-.botao-flutuante span {
+#contador-carrinho {
     position: absolute;
     top: 0; right: 0;
-    background: red;
+    background: #9d00ff; /* Bolinha Roxa */
+    color: white;
     font-size: 12px;
     width: 20px; height: 20px;
     border-radius: 50%;
     display: flex; justify-content: center; align-items: center;
+    font-weight: bold;
 }
 
-/* Lista dentro do modal do carrinho */
-.lista-carrinho-scroll {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #eee;
-}
+.lista-carrinho-scroll { max-height: 300px; overflow-y: auto; margin-top: 15px; }
 
 .item-carrinho {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px dashed #ccc;
-}
-.btn-lixeira { color: red; cursor: pointer; margin-left: 10px; }
-/* --- ESTILOS NOVOS DA PESQUISA E CATEGORIAS --- */
-
-.filtros-container {
-    max-width: 1200px;
-    margin: 0 auto 20px auto;
-    padding: 0 15px;
-}
-
-/* Barra de Pesquisa */
-.search-box {
-    position: relative;
-    margin-bottom: 15px;
-}
-
-.search-box input {
-    width: 100%;
-    padding: 12px 15px 12px 45px; /* Espaço para o ícone */
-    border: 1px solid #ddd;
-    border-radius: 25px;
-    font-size: 16px;
-    outline: none;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    box-sizing: border-box; /* Importante para não quebrar layout */
-}
-
-.search-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 18px;
-    opacity: 0.5;
-}
-
-/* Menu de Categorias (Scroll Horizontal no Mobile) */
-.menu-categorias {
-    display: flex;
-    gap: 10px;
-    overflow-x: auto; /* Permite rolar para o lado no celular */
-    white-space: nowrap;
-    padding-bottom: 5px; /* Espaço para a barra de rolagem não colar */
-    scrollbar-width: none; /* Esconde barra no Firefox */
-}
-
-.menu-categorias::-webkit-scrollbar {
-    display: none; /* Esconde barra no Chrome */
-}
-
-.btn-categoria {
-    background: #fff;
-    border: 1px solid #ddd;
-    padding: 8px 20px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #555;
-    transition: all 0.3s ease;
-}
-
-.btn-categoria:hover {
-    background: #f0f0f0;
-}
-
-.btn-categoria.ativo {
-    background: #007bff; /* Azul principal */
-    color: white;
-    border-color: #007bff;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0,123,255,0.3);
+    background: #222;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border-left: 4px solid #9d00ff; /* Lateral Roxa */
+    display: flex; justify-content: space-between; align-items: center;
 }
