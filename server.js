@@ -84,7 +84,7 @@ app.get('/api/produtos', (req, res) => {
     res.json(produtos);
 });
 
-// Cadastrar Produto
+// Cadastrar Produto (POST)
 app.post('/api/produtos', upload.single('imagem'), (req, res) => {
     try {
         const produtos = lerJSON(ARQUIVO_PRODUTOS);
@@ -111,6 +111,43 @@ app.post('/api/produtos', upload.single('imagem'), (req, res) => {
     } catch (erro) {
         console.error(erro);
         res.status(500).json({ error: "Erro interno" });
+    }
+});
+
+// Editar Produto (PUT) - AGORA NO LUGAR CERTO
+app.put('/api/produtos/:id', upload.single('imagem'), (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        let produtos = lerJSON(ARQUIVO_PRODUTOS);
+        const index = produtos.findIndex(p => p.id === id);
+
+        if (index === -1) return res.status(404).json({ message: "Produto não encontrado" });
+
+        // Processar variações
+        let variacoes = [];
+        if (typeof req.body.variacoes === 'string') {
+            try { variacoes = JSON.parse(req.body.variacoes); } catch(e) { variacoes = []; }
+        } else {
+            variacoes = req.body.variacoes || [];
+        }
+
+        // Mantém a imagem antiga se não enviou uma nova
+        const imagemFinal = req.file ? `/uploads/${req.file.filename}` : produtos[index].imagem;
+
+        // Atualiza os dados
+        produtos[index] = {
+            ...produtos[index], // Mantém ID e outros dados
+            nome: req.body.nome,
+            categoria: req.body.categoria,
+            imagem: imagemFinal,
+            variacoes: variacoes
+        };
+
+        salvarJSON(ARQUIVO_PRODUTOS, produtos);
+        res.json({ message: 'Produto atualizado com sucesso!' });
+    } catch (erro) {
+        console.error(erro);
+        res.status(500).json({ error: "Erro ao atualizar" });
     }
 });
 
@@ -144,7 +181,7 @@ app.delete('/api/produtos/:id/variacao/:index', (req, res) => {
 // 🎟️ API DE CUPONS
 // ========================================================
 
-// Listar Cupons (Para o Admin)
+// Listar Cupons
 app.get('/api/cupons', (req, res) => {
     res.json(lerJSON(ARQUIVO_CUPONS));
 });
@@ -172,7 +209,7 @@ app.delete('/api/cupons/:codigo', (req, res) => {
     res.json({ message: 'Cupom deletado' });
 });
 
-// Validar Cupom (Para o Carrinho)
+// Validar Cupom
 app.get('/api/cupom/:codigo', (req, res) => {
     const codigo = req.params.codigo.toUpperCase();
     const cupons = lerJSON(ARQUIVO_CUPONS);
@@ -186,16 +223,16 @@ app.get('/api/cupom/:codigo', (req, res) => {
 });
 
 // ========================================================
-// 💰 VENDAS E ESTOQUE (LÓGICA NOVA)
+// 💰 VENDAS E ESTOQUE
 // ========================================================
 
-// 1. Listar Vendas (Para o Admin ver os pedidos)
+// Listar Vendas
 app.get('/api/vendas', (req, res) => {
     const vendas = lerJSON(ARQUIVO_VENDAS);
-    res.json(vendas.reverse()); // Mostra o mais novo primeiro
+    res.json(vendas.reverse());
 });
 
-// 2. Registrar Nova Venda (Vinda do Site)
+// Registrar Nova Venda
 app.post('/api/venda', (req, res) => {
     const vendas = lerJSON(ARQUIVO_VENDAS);
     
@@ -203,9 +240,9 @@ app.post('/api/venda', (req, res) => {
         id_pedido: Date.now(),
         data: new Date().toLocaleString('pt-BR'),
         cliente: req.body.cliente || 'Cliente Site',
-        itens: req.body.itens, // Array com produto, marca, qtd
+        itens: req.body.itens,
         total: req.body.total,
-        status: 'Pendente' // <--- STATUS IMPORTANTE
+        status: 'Pendente'
     };
 
     vendas.push(novaVenda);
@@ -214,34 +251,30 @@ app.post('/api/venda', (req, res) => {
     res.json({ message: 'Pedido registrado!', id: novaVenda.id_pedido });
 });
 
-// 3. CONFIRMAR VENDA E BAIXAR ESTOQUE (A Mágica)
+// Confirmar Venda
 app.post('/api/venda/:id/confirmar', (req, res) => {
     const idPedido = parseInt(req.params.id);
     
     let vendas = lerJSON(ARQUIVO_VENDAS);
     let produtos = lerJSON(ARQUIVO_PRODUTOS);
     
-    // Acha a venda
     const vendaIndex = vendas.findIndex(v => v.id_pedido === idPedido);
     
     if (vendaIndex === -1) return res.status(404).json({ message: 'Venda não encontrada' });
     if (vendas[vendaIndex].status === 'Aprovado') return res.status(400).json({ message: 'Venda já foi aprovada antes!' });
 
-    // --- LÓGICA DE SUBTRAÇÃO DE ESTOQUE ---
     const itensVenda = vendas[vendaIndex].itens;
     let erros = [];
 
     itensVenda.forEach(itemVenda => {
-        // Encontra o produto pelo nome
         const produto = produtos.find(p => p.nome === itemVenda.produto);
         
         if (produto) {
-            // Encontra a variação pela marca (Ex: "Heineken")
             const variacao = produto.variacoes.find(v => v.marca === itemVenda.marca);
             
             if (variacao) {
                 if (variacao.estoque >= itemVenda.qtd) {
-                    variacao.estoque -= itemVenda.qtd; // Subtrai aqui!
+                    variacao.estoque -= itemVenda.qtd;
                 } else {
                     erros.push(`Estoque insuficiente para ${itemVenda.produto} (${itemVenda.marca})`);
                 }
@@ -253,7 +286,6 @@ app.post('/api/venda/:id/confirmar', (req, res) => {
         return res.status(400).json({ message: 'Erro ao baixar estoque', detalhes: erros });
     }
 
-    // Se deu tudo certo, salva os novos estoques e atualiza o status
     salvarJSON(ARQUIVO_PRODUTOS, produtos);
     vendas[vendaIndex].status = 'Aprovado';
     salvarJSON(ARQUIVO_VENDAS, vendas);

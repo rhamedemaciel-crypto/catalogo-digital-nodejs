@@ -116,6 +116,7 @@
         </div>
 
         <form id="form-produto">
+            <input type="hidden" id="id-produto-editando">
             <div class="form-group">
                 <label>NOME DO ITEM</label>
                 <input type="text" name="nome" placeholder="Ex: Creatina Pura, Strap de Punho..." required>
@@ -139,7 +140,10 @@
                 <div id="container-variacoes"></div>
             </div>
 
-            <button type="submit" class="btn-salvar">💾 SALVAR NO ESTOQUE</button>
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn-salvar" id="btn-submit">💾 SALVAR NO ESTOQUE</button>
+                <button type="button" id="btn-cancelar" onclick="cancelarEdicao()" style="display: none; background: #333; color: #ccc; width: 100%; padding: 15px; margin-top: 20px; border: 1px solid #555;">❌ CANCELAR</button>
+            </div>
         </form>
 
         <hr>
