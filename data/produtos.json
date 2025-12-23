@@ -34,5 +34,53 @@
       }
     ],
     "ativo": true
+  },
+  {
+    "id": 1766448991191,
+    "nome": "Masteron",
+    "categoria": "hormonios femininos",
+    "imagem": "/uploads/1766448991151-images.jpg",
+    "variacoes": [
+      {
+        "marca": "Landerlan Gold",
+        "preco_custo": 200,
+        "preco_venda": 240,
+        "estoque": 10
+      },
+      {
+        "marca": "King Pharma",
+        "preco_custo": 150,
+        "preco_venda": 160,
+        "estoque": 10
+      },
+      {
+        "marca": "American Plus",
+        "preco_custo": 120,
+        "preco_venda": 210,
+        "estoque": 10
+      }
+    ],
+    "ativo": true
+  },
+  {
+    "id": 1766449129366,
+    "nome": "Primabolan",
+    "categoria": "hormonios femininos",
+    "imagem": "/uploads/1766449129360-images.jpg",
+    "variacoes": [
+      {
+        "marca": "Landerlan",
+        "preco_custo": 400,
+        "preco_venda": 600,
+        "estoque": 10
+      },
+      {
+        "marca": "King Pharma",
+        "preco_custo": 300,
+        "preco_venda": 800,
+        "estoque": 10
+      }
+    ],
+    "ativo": true
   }
 ]
