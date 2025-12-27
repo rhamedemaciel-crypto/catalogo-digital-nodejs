@@ -12,5 +12,19 @@
     ],
     "total": 8424,
     "status": "Aprovado"
+  },
+  {
+    "id_pedido": 1766849625541,
+    "data": "27/12/2025, 12:33:45",
+    "cliente": "Cliente via WhatsApp",
+    "itens": [
+      {
+        "produto": "Masteron",
+        "marca": "Landerlan Gold",
+        "qtd": 1
+      }
+    ],
+    "total": 240,
+    "status": "Pendente"
   }
 ]
