@@ -37,6 +37,7 @@ const upload = multer({ storage: storage });
 const ARQUIVO_PRODUTOS = path.join(__dirname, 'data', 'produtos.json');
 const ARQUIVO_VENDAS = path.join(__dirname, 'data', 'vendas.json');
 const ARQUIVO_CUPONS = path.join(__dirname, 'data', 'cupons.json');
+const ARQUIVO_CONFIG = path.join(__dirname, 'data', 'loja-config.json'); // Caminho da config
 
 function lerJSON(arquivo) {
     if (!fs.existsSync(arquivo)) {
@@ -57,6 +58,7 @@ function salvarJSON(arquivo, dados) {
 // 1. Rota de Login
 app.post('/api/login', (req, res) => {
     const { senha } = req.body;
+    // IMPORTANTE: Mude 'admin123' para uma senha segura antes de entregar
     if (senha === 'admin123') { 
         req.session.usuarioLogado = true;
         res.json({ success: true });
@@ -114,7 +116,7 @@ app.post('/api/produtos', upload.single('imagem'), (req, res) => {
     }
 });
 
-// Editar Produto (PUT) - AGORA NO LUGAR CERTO
+// Editar Produto (PUT)
 app.put('/api/produtos/:id', upload.single('imagem'), (req, res) => {
     try {
         const id = parseInt(req.params.id);
@@ -136,7 +138,7 @@ app.put('/api/produtos/:id', upload.single('imagem'), (req, res) => {
 
         // Atualiza os dados
         produtos[index] = {
-            ...produtos[index], // Mantém ID e outros dados
+            ...produtos[index], // Mantém ID e outros dados antigos
             nome: req.body.nome,
             categoria: req.body.categoria,
             imagem: imagemFinal,
@@ -160,7 +162,7 @@ app.delete('/api/produtos/:id', (req, res) => {
     res.json({ message: 'Produto deletado!' });
 });
 
-// Deletar APENAS uma variação
+// Deletar APENAS uma variação (Rota auxiliar, caso precise)
 app.delete('/api/produtos/:id/variacao/:index', (req, res) => {
     const idProduto = parseInt(req.params.id);
     const indexVariacao = parseInt(req.params.index);
@@ -292,33 +294,44 @@ app.post('/api/venda/:id/confirmar', (req, res) => {
 
     res.json({ message: 'Venda confirmada e estoque atualizado com sucesso!' });
 });
-/* --- ROTA PARA LER A CONFIGURAÇÃO (O site usa isso para carregar cores) --- */
+
+// ========================================================
+// 🎨 CONFIGURAÇÕES DA LOJA (PERSONALIZAÇÃO)
+// ========================================================
+
+/* ROTA PARA LER A CONFIGURAÇÃO */
 app.get('/config', (req, res) => {
     try {
-        const configData = fs.readFileSync('data/loja-config.json');
+        if (!fs.existsSync(ARQUIVO_CONFIG)) {
+            // Cria um arquivo padrão se não existir
+            fs.writeFileSync(ARQUIVO_CONFIG, JSON.stringify({ nomeLoja: "Minha Loja" }));
+        }
+        const configData = fs.readFileSync(ARQUIVO_CONFIG);
         res.json(JSON.parse(configData));
     } catch (error) {
         res.status(500).json({ erro: 'Erro ao carregar configurações' });
     }
 });
 
-/* --- ROTA PARA ATUALIZAR A CONFIGURAÇÃO (O Admin usa isso) --- */
-// upload.fields permite enviar múltiplas imagens com nomes diferentes
+/* ROTA PARA ATUALIZAR A CONFIGURAÇÃO (CORRIGIDA) */
+// Aceita campos de texto E arquivos
 app.post('/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' }]), (req, res) => {
     try {
         // 1. Ler a configuração atual
-        const currentConfig = JSON.parse(fs.readFileSync('data/loja-config.json'));
+        let currentConfig = {};
+        if (fs.existsSync(ARQUIVO_CONFIG)) {
+            currentConfig = JSON.parse(fs.readFileSync(ARQUIVO_CONFIG));
+        }
         
-        // 2. Atualizar textos e cores vindos do formulário
+        // 2. CORREÇÃO: Atualizar com TUDO que veio no corpo da requisição (req.body)
+        // Isso garante que whatsappPedidos, instagramLink, etc sejam salvos.
         const novaConfig = {
-            ...currentConfig,
-            nomeLoja: req.body.nomeLoja || currentConfig.nomeLoja,
-            corDestaque: req.body.corDestaque || currentConfig.corDestaque
+            ...currentConfig, // Mantém o que já existia
+            ...req.body       // Sobrescreve com os novos textos enviados pelo form
         };
 
         // 3. Se enviou imagem nova para o FUNDO do site, atualiza
         if (req.files['fundoSite']) {
-            // (Opcional: Deletar a antiga aqui se quiser economizar espaço)
             novaConfig.fundoSite = req.files['fundoSite'][0].filename;
         }
 
@@ -328,7 +341,7 @@ app.post('/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' 
         }
 
         // 5. Salvar no arquivo JSON
-        fs.writeFileSync('data/loja-config.json', JSON.stringify(novaConfig, null, 2));
+        salvarJSON(ARQUIVO_CONFIG, novaConfig);
         
         res.json({ message: 'Loja atualizada com sucesso!', config: novaConfig });
 
