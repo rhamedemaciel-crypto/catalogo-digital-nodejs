@@ -2,187 +2,256 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QG do Bruxo | Painel Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QG do Bruxo | Painel</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Russo+One&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css"> <style>
-        /* --- ESTILOS ESPECÍFICOS DO ADMIN (Dark Mode Tropa) --- */
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* --- RESET E BASE --- */
+        * { box-sizing: border-box; }
         body {
             font-family: 'Montserrat', sans-serif;
             color: #e0e0e0; 
-        }
-        
-        .admin-container { 
-            max-width: 900px; 
-            margin: 40px auto; 
-            background: rgba(18, 18, 18, 0.95); /* Fundo bem escuro */
-            backdrop-filter: blur(15px);
-            padding: 40px; 
-            border-radius: 20px; 
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); 
-            border: 1px solid #333;
-        }
-        
-        .header-admin { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin-bottom: 30px; 
-            border-bottom: 1px solid #333;
-            padding-bottom: 20px;
-        }
-
-        h2, h3 {
-            font-family: 'Russo One', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 2px;
             margin: 0;
+            background-color: #050505;
+            overflow-x: hidden;
         }
 
-        h2 {
-            font-size: 1.8rem;
-            background: linear-gradient(90deg, #00ff88, #9d00ff);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+        /* --- LAYOUT DESKTOP PADRÃO --- */
+        .admin-layout { display: flex; min-height: 100vh; }
+
+        /* HEADER MOBILE */
+        .mobile-header {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%;
+            height: 60px;
+            background: #000;
+            border-bottom: 2px solid #ff5e00;
+            z-index: 2000;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 5px 20px rgba(255, 94, 0, 0.2);
+        }
+        .mobile-header h3 { color: #fff; margin: 0; font-size: 1.2rem; }
+        .btn-hamburger {
+            background: none; border: none; color: #ff5e00; font-size: 24px; cursor: pointer;
         }
 
-        .link-voltar { color: #888; text-decoration: none; font-weight: bold; }
-        .link-voltar:hover { color: #00ff88; }
+        /* SIDEBAR / MENU */
+        .sidebar {
+            width: 260px;
+            background: #080808;
+            border-right: 1px solid #333;
+            padding: 20px;
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; height: 100vh;
+            z-index: 2100;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-        /* --- FORMULÁRIOS --- */
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #ffd700; }
+        .sidebar h2 {
+            font-size: 1.5rem; text-align: center; color: white; margin-bottom: 40px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-nav {
+            background: transparent; color: #888; border: none;
+            padding: 15px; text-align: left; font-size: 1rem; font-weight: bold;
+            cursor: pointer; border-radius: 8px; margin-bottom: 10px;
+            display: flex; align-items: center; gap: 12px;
+            width: 100%;
+        }
+        .btn-nav:hover, .btn-nav.ativo { background: #1a1a1a; color: #ff5e00; border-left: 3px solid #ff5e00; }
+        .btn-sair { margin-top: auto; color: #ff4444; }
+
+        /* OVERLAY */
+        .menu-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 2050;
+            display: none; backdrop-filter: blur(3px);
+        }
+
+        /* CONTEÚDO PRINCIPAL */
+        .content-area {
+            margin-left: 260px;
+            flex-grow: 1; padding: 40px; width: calc(100% - 260px);
+        }
+
+        /* --- ELEMENTOS DO PAINEL --- */
+        .card { background: #121212; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
         
-        input[type="text"], input[type="number"], select, input[type="file"] { 
-            width: 100%; 
-            padding: 12px; 
-            background: #0a0a0a; 
-            border: 1px solid #333; 
-            border-radius: 8px; 
-            color: white;
-            box-sizing: border-box;
-            outline: none;
-        }
-
-        input:focus { border-color: #00ff88; }
-
-        /* --- VARIAÇÕES --- */
-        .variacoes-box { 
-            background: rgba(255, 255, 255, 0.03); 
-            padding: 20px; 
-            border-radius: 10px; 
-            border: 1px dashed #444;
-            margin-bottom: 20px;
-        }
-        .variacao-row { 
-            display: grid; 
-            grid-template-columns: 2fr 1fr 1fr 1fr auto; 
-            gap: 10px; 
-            margin-bottom: 10px; 
-            align-items: center; 
-        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #ff5e00; font-weight: bold; font-size: 0.9rem; }
         
-        /* --- BOTÕES --- */
-        button { cursor: pointer; border-radius: 8px; font-weight: bold; border: none; text-transform: uppercase; }
-        .btn-add { background: #333; color: #00ff88; border: 1px solid #00ff88; padding: 8px 15px; }
-        .btn-remove { background: #330000; color: #ff4444; border: 1px solid #ff4444; padding: 8px 12px; }
-        
-        .btn-salvar { 
-            width: 100%; padding: 15px; 
-            background: linear-gradient(45deg, #00ff88, #00cc6a); 
-            color: black; font-size: 18px; margin-top: 20px; 
+        input, select {
+            width: 100%; padding: 12px; background: #000; border: 1px solid #444;
+            border-radius: 6px; color: white; outline: none; font-size: 16px; 
+        }
+        input:focus { border-color: #ff5e00; }
+
+        .btn-acao { width: 100%; padding: 15px; border-radius: 8px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; }
+        .btn-salvar { background: #ff5e00; color: #000; }
+        .btn-add { background: #222; color: #ff5e00; border: 1px solid #ff5e00; margin-top: 10px; }
+        .btn-remove { background: #330000; color: red; border: 1px solid red; padding: 8px; width: 100%; margin-top: 5px; }
+
+        .variacao-row {
+            background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333;
         }
 
-        hr { margin: 40px 0; border: 0; border-top: 1px solid #333; }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; } 
+        .item-lista {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #000; padding: 15px; border-bottom: 1px solid #333;
+        }
 
-        /* --- CARDS (Produtos e Pedidos) --- */
-        .card-item { 
-            background: #1a1a1a; /* Fundo cinza escuro para os cartões */
-            border: 1px solid #333; 
-            padding: 20px; 
-            margin-bottom: 15px; 
-            border-radius: 10px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        /* --- MOBILE TOTAL --- */
+        @media (max-width: 768px) {
+            .mobile-header { display: flex; }
+            .sidebar { transform: translateX(-100%); width: 80%; }
+            .sidebar.aberto { transform: translateX(0); }
+            .menu-overlay.aberto { display: block; }
+            .content-area { margin-left: 0; width: 100%; padding: 20px; padding-top: 80px; }
+            .sidebar h2 { display: none; }
+            .variacao-row { display: flex; flex-direction: column; gap: 10px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="admin-container">
-        <div class="header-admin">
-            <h2>📦 NOVO DROP</h2>
-            <a href="/" class="link-voltar">← VOLTAR PARA A LOJA</a>
-        </div>
+    <header class="mobile-header">
+        <h3>PAINEL DO BRUXO</h3>
+        <button class="btn-hamburger" onclick="toggleAdminMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+    </header>
 
-        <form id="form-produto">
-            <input type="hidden" id="id-produto-editando">
-            <div class="form-group">
-                <label>NOME DO ITEM</label>
-                <input type="text" name="nome" placeholder="Ex: Creatina Pura, Strap de Punho..." required>
-            </div>
+    <div class="menu-overlay" id="overlayAdmin" onclick="toggleAdminMenu()"></div>
+
+    <div class="admin-layout">
+        
+        <aside class="sidebar" id="sidebarAdmin">
+            <h2>QG ADMIN</h2>
+            <nav>
+                <button onclick="mostrarAba('produtos'); toggleAdminMenu()" class="btn-nav ativo">
+                    <i class="fas fa-box"></i> Produtos
+                </button>
+                <button onclick="mostrarAba('config'); toggleAdminMenu()" class="btn-nav">
+                    <i class="fas fa-paint-brush"></i> Aparência
+                </button>
+                
+                <button onclick="mostrarAba('social'); toggleAdminMenu()" class="btn-nav">
+                    <i class="fab fa-whatsapp"></i> Redes Sociais
+                </button>
+
+                <button onclick="window.location.href='/'" class="btn-nav">
+                    <i class="fas fa-home"></i> Ver Loja
+                </button>
+                <button onclick="alert('Logout')" class="btn-nav btn-sair">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </button>
+            </nav>
+        </aside>
+
+        <main class="content-area">
             
-            <div class="form-group">
-                <label>CATEGORIA</label>
-                <input type="text" name="categoria" placeholder="Ex: Suplementos, Gear, Vestuário">
-            </div>
-
-            <div class="form-group">
-                <label>FOTO DO PRODUTO</label>
-                <input type="file" name="imagem" accept="image/*" style="padding-top: 10px;">
-            </div>
-
-            <div class="variacoes-box">
-                <div class="header-admin" style="margin-bottom: 15px; border-bottom: none; padding: 0;">
-                    <h3 style="margin:0; font-size: 1.2rem; color: #fff;">VARIAÇÕES & ESTOQUE</h3>
-                    <button type="button" class="btn-add" onclick="adicionarLinhaVariacao()">+ OPÇÃO</button>
+            <section id="aba-produtos">
+                <div class="card">
+                    <h3 style="margin-top:0; color:#fff;">NOVO PRODUTO</h3>
+                    <form id="form-produto">
+                        <input type="hidden" id="id-produto-editando">
+                        <div class="form-group"><label>Nome do Produto</label><input type="text" name="nome" placeholder="Ex: Camiseta Tropa" required></div>
+                        <div class="form-group"><label>Categoria</label><input type="text" name="categoria" placeholder="Ex: Vestuário"></div>
+                        <div class="form-group"><label>Imagem</label><input type="file" name="imagem" accept="image/*"></div>
+                        <label>Variações & Estoque</label>
+                        <div id="container-variacoes"></div>
+                        <button type="button" class="btn-acao btn-add" onclick="adicionarLinhaVariacao()">+ Variação</button>
+                        <hr style="border-color:#333; margin: 20px 0;">
+                        <button type="submit" class="btn-acao btn-salvar" id="btn-submit">SALVAR PRODUTO</button>
+                        <button type="button" id="btn-cancelar" onclick="cancelarEdicao()" class="btn-acao" style="background:#333; color:#ccc; display:none; margin-top:10px;">CANCELAR</button>
+                    </form>
                 </div>
-                <div id="container-variacoes"></div>
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-                <button type="submit" class="btn-salvar" id="btn-submit">💾 SALVAR NO ESTOQUE</button>
-                <button type="button" id="btn-cancelar" onclick="cancelarEdicao()" style="display: none; background: #333; color: #ccc; width: 100%; padding: 15px; margin-top: 20px; border: 1px solid #555;">❌ CANCELAR</button>
-            </div>
-        </form>
-
-        <hr>
-
-        <div class="header-admin">
-            <h2>📋 INVENTÁRIO</h2>
-        </div>
-        <div id="lista-produtos-admin"></div>
-
-        <hr>
-
-        <div class="header-admin">
-            <h2>🎟️ CUPONS SECRETOS</h2>
-        </div>
-        <div style="background: rgba(157, 0, 255, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #9d00ff;">
-            <form id="form-cupom" style="display: flex; gap: 10px; align-items: flex-end;">
-                <div style="flex: 2;">
-                    <label style="font-size: 12px; color: #9d00ff;">CÓDIGO</label>
-                    <input type="text" id="codigo-cupom" placeholder="Ex: BRUXO10" required style="border-color: #9d00ff;">
+                <div class="card">
+                    <h3 style="color:#fff;">ESTOQUE ATUAL</h3>
+                    <div class="table-container"><div id="lista-produtos-admin"></div></div>
                 </div>
-                <div style="flex: 1;">
-                    <label style="font-size: 12px; color: #9d00ff;">DESCONTO (%)</label>
-                    <input type="number" id="valor-cupom" placeholder="10" required style="border-color: #9d00ff;">
+                <div class="card">
+                    <h3 style="color:#fff;">CUPONS</h3>
+                    <form id="form-cupom" style="display:flex; flex-direction:column; gap:10px;">
+                        <input type="text" id="codigo-cupom" placeholder="Código (Ex: BRUXO10)">
+                        <input type="number" id="valor-cupom" placeholder="% Desconto">
+                        <button type="submit" class="btn-acao btn-add" style="border-color:#9d00ff; color:#9d00ff;">CRIAR CUPOM</button>
+                    </form>
+                    <div id="lista-cupons" style="margin-top:15px;"></div>
                 </div>
-                <button type="submit" style="background: #9d00ff; color: white; padding: 12px 20px; box-shadow: 0 0 10px #9d00ff;">CRIAR</button>
-            </form>
-        </div>
-        <div id="lista-cupons"></div>
+                <div class="card">
+                    <h3 style="color:#fff;">VENDAS RECENTES</h3>
+                    <button onclick="carregarVendas()" class="btn-acao" style="background:#333; color:#fff; font-size:0.8rem; padding:10px;">ATUALIZAR</button>
+                    <div id="lista-vendas" style="margin-top:15px;"></div>
+                </div>
+            </section>
 
-        <hr>
+            <section id="aba-config" style="display: none;">
+                <div class="card">
+                    <h3 style="color:#fff;">PERSONALIZAR LOJA</h3>
+                    <p style="color:#888; font-size:0.9rem;">Mude o visual do site para datas especiais.</p>
+                    <form id="form-tema">
+                        <div class="form-group"><label>Nome da Loja</label><input type="text" id="config-nome" name="nomeLoja"></div>
+                        <div class="form-group"><label>Cor Principal (Neon)</label><input type="color" id="config-cor" name="corDestaque" style="height:50px; cursor:pointer;"></div>
+                        <div class="form-group"><label>Fundo do Site</label><input type="file" name="fundoSite" accept="image/*"></div>
+                        <div class="form-group"><label>Banner Topo</label><input type="file" name="fundoHeader" accept="image/*"></div>
+                        <button type="submit" class="btn-acao btn-salvar">APLICAR TEMA</button>
+                    </form>
+                </div>
+            </section>
 
-        <div class="header-admin">
-            <h2>💰 ÚLTIMOS PEDIDOS</h2>
-            <button onclick="carregarVendas()" style="background: #444; color: white; padding: 8px 15px;">🔄 ATUALIZAR</button>
-        </div>
-        <div id="lista-vendas">
-            </div>
+            <section id="aba-social" style="display: none;">
+                <div class="card">
+                    <h3 style="color:#fff;">REDES SOCIAIS & CONTATO</h3>
+                    <p style="color:#888; font-size:0.9rem;">Defina para onde os clientes serão enviados.</p>
+                    
+                    <form id="form-social">
+                        <div class="form-group">
+                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp PEDIDOS (Finalizar Compra)</label>
+                            <input type="text" id="social-zap-pedidos" name="whatsappPedidos" placeholder="Ex: 5583999999999">
+                            <small style="color:#666">Digite apenas números (DDD + Numero)</small>
+                        </div>
 
+                        <div class="form-group">
+                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp ATENDIMENTO (Botão Flutuante)</label>
+                            <input type="text" id="social-zap-float" name="whatsappFlutuante" placeholder="Ex: 5583999999999">
+                            <small style="color:#666">Pode ser um número diferente para dúvidas.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label><i class="fab fa-instagram" style="color:#e1306c;"></i> Link do Instagram</label>
+                            <input type="text" id="social-insta" name="instagramLink" placeholder="https://instagram.com/seu_perfil">
+                        </div>
+
+                        <button type="submit" class="btn-acao btn-salvar">SALVAR CONTATOS</button>
+                    </form>
+                </div>
+            </section>
+
+        </main>
     </div>
+
+    <script>
+        function toggleAdminMenu() {
+            const sidebar = document.getElementById('sidebarAdmin');
+            const overlay = document.getElementById('overlayAdmin');
+            if (window.innerWidth <= 768) {
+                if (sidebar.classList.contains('aberto')) {
+                    sidebar.classList.remove('aberto');
+                    overlay.classList.remove('aberto');
+                } else {
+                    sidebar.classList.add('aberto');
+                    overlay.classList.add('aberto');
+                }
+            }
+        }
+    </script>
 
     <script src="/js/admin.js"></script>
 </body>

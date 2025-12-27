@@ -2,25 +2,31 @@
 // 1. GESTÃO DE PRODUTOS (CRIAR E EDITAR)
 // ==========================================
 
-// Adiciona uma linha vazia (usada no botão +)
+/* --- FUNÇÃO CORRIGIDA PARA MOBILE --- */
 function adicionarLinhaVariacao(dados = {}) {
     const container = document.getElementById('container-variacoes');
     const div = document.createElement('div');
-    div.className = 'variacao-row';
-    
-    // Se vier dados (edição), preenche. Se não, deixa vazio.
-    const marca = dados.marca || '';
-    const custo = dados.preco_custo || '';
-    const venda = dados.preco_venda || '';
-    const estoque = dados.estoque || '10';
+    div.className = 'variacao-row'; // Classe que o CSS usa para empilhar no mobile
 
     div.innerHTML = `
-        <input type="text" class="input-marca" placeholder="Opção (Ex: P, M, G)" value="${marca}" required>
-        <input type="number" class="input-custo" placeholder="Custo" step="0.01" value="${custo}">
-        <input type="number" class="input-venda" placeholder="Venda" step="0.01" value="${venda}" required>
-        <input type="number" class="input-estoque" placeholder="Qtd" value="${estoque}">
-        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">X</button>
+        <div class="form-group" style="margin-bottom:5px;">
+            <input type="text" placeholder="Opção (Ex: G, 42, Azul)" class="var-marca" value="${dados.marca || ''}" required>
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1;">
+                <input type="number" placeholder="Preço R$" class="var-preco" value="${dados.preco_venda || ''}" step="0.01" required>
+            </div>
+            <div style="flex:1;">
+                <input type="number" placeholder="Qtd" class="var-estoque" value="${dados.estoque || ''}" required>
+            </div>
+        </div>
+
+        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">
+            <i class="fas fa-trash"></i> REMOVER
+        </button>
     `;
+
     container.appendChild(div);
 }
 
@@ -76,10 +82,9 @@ document.getElementById('form-produto').addEventListener('submit', async (e) => 
     const variacoes = [];
     document.querySelectorAll('.variacao-row').forEach(linha => {
         variacoes.push({
-            marca: linha.querySelector('.input-marca').value,
-            preco_custo: parseFloat(linha.querySelector('.input-custo').value) || 0,
-            preco_venda: parseFloat(linha.querySelector('.input-venda').value) || 0,
-            estoque: parseInt(linha.querySelector('.input-estoque').value) || 0
+            marca: linha.querySelector('.var-marca').value, // Ajustado para classe correta
+            preco_venda: parseFloat(linha.querySelector('.var-preco').value) || 0,
+            estoque: parseInt(linha.querySelector('.var-estoque').value) || 0
         });
     });
 
@@ -142,7 +147,7 @@ async function carregarListaAdmin() {
                             <div><strong style="color:#fff; font-size:1.1em;">${p.nome}</strong><br><small style="color:#888">${p.categoria}</small></div>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <button onclick='prepararEdicao(${p.id})' style="background:transparent; color:#ffd700; border:1px solid #ffd700; padding:5px 10px; border-radius:5px;">✏️ Editar</button>
+                            <button onclick='prepararEdicao(${p.id})' style="background:transparent; color:#ffd700; border:1px solid #ffd700; padding:5px 10px; border-radius:5px;">✏️</button>
                             <button onclick="deletarProduto(${p.id})" style="background:transparent; color:#ff4444; border:1px solid #ff4444; padding:5px 10px; border-radius:5px;">🗑️</button>
                         </div>
                     </div>
@@ -170,7 +175,7 @@ async function deletarProduto(id) {
 }
 
 // ==========================================
-// 2. GESTÃO DE CUPONS (MANTIDO IGUAL)
+// 2. GESTÃO DE CUPONS
 // ==========================================
 async function carregarCupons() {
     const container = document.getElementById('lista-cupons');
@@ -206,7 +211,7 @@ async function deletarCupom(cod) {
 }
 
 // ==========================================
-// 3. GESTÃO DE PEDIDOS (MANTIDO IGUAL)
+// 3. GESTÃO DE PEDIDOS
 // ==========================================
 async function carregarVendas() {
     const container = document.getElementById('lista-vendas');
@@ -250,6 +255,111 @@ async function confirmarVenda(id) {
         if(res.ok) { carregarVendas(); carregarListaAdmin(); } 
         else { alert("Erro: " + data.message); }
     } catch (e) { alert("Erro de conexão"); }
+}
+
+// ==========================================
+// 4. GESTÃO DE ABAS E CONFIGURAÇÕES
+// ==========================================
+
+/* --- LÓGICA DE ABAS (Produtos vs Config vs Social) --- */
+function mostrarAba(aba) {
+    // 1. Esconde tudo
+    document.getElementById('aba-produtos').style.display = 'none';
+    document.getElementById('aba-config').style.display = 'none';
+    document.getElementById('aba-social').style.display = 'none'; // Nova aba
+    
+    // 2. Remove classe ativo dos botões
+    document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('ativo'));
+
+    // 3. Mostra a escolhida e ativa o botão
+    if (aba === 'produtos') {
+        document.getElementById('aba-produtos').style.display = 'block';
+        document.querySelectorAll('.btn-nav')[0].classList.add('ativo');
+    } 
+    else if (aba === 'config') {
+        document.getElementById('aba-config').style.display = 'block';
+        document.querySelectorAll('.btn-nav')[1].classList.add('ativo');
+        carregarConfiguracoesNoForm();
+    }
+    else if (aba === 'social') { // NOVA LÓGICA
+        document.getElementById('aba-social').style.display = 'block';
+        document.querySelectorAll('.btn-nav')[2].classList.add('ativo');
+        carregarConfiguracoesNoForm(); // Carrega os contatos também
+    }
+}
+
+/* --- CARREGAR DADOS NO FORMULÁRIO (Config + Social) --- */
+async function carregarConfiguracoesNoForm() {
+    try {
+        const res = await fetch('/config');
+        const config = await res.json();
+
+        // Campos Visuais
+        if (document.getElementById('config-nome')) {
+            if (config.nomeLoja) document.getElementById('config-nome').value = config.nomeLoja;
+            if (config.corDestaque) document.getElementById('config-cor').value = config.corDestaque;
+        }
+
+        // Campos Sociais (Novos)
+        if (document.getElementById('social-zap-pedidos')) {
+            if (config.whatsappPedidos) document.getElementById('social-zap-pedidos').value = config.whatsappPedidos;
+            if (config.whatsappFlutuante) document.getElementById('social-zap-float').value = config.whatsappFlutuante;
+            if (config.instagramLink) document.getElementById('social-insta').value = config.instagramLink;
+        }
+        
+    } catch (error) {
+        console.error("Erro ao ler config:", error);
+    }
+}
+
+/* --- SALVAR APARÊNCIA --- */
+const formTema = document.getElementById('form-tema');
+if (formTema) {
+    formTema.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        const original = btn.innerText;
+        btn.innerText = "Salvando...";
+        btn.disabled = true;
+
+        const formData = new FormData(e.target);
+
+        try {
+            await fetch('/config', { method: 'POST', body: formData });
+            alert("✨ Tema atualizado! Recarregue a loja.");
+        } catch (error) { alert("Erro ao salvar."); } 
+        finally { btn.innerText = original; btn.disabled = false; }
+    });
+}
+
+/* --- SALVAR REDES SOCIAIS (NOVO) --- */
+const formSocial = document.getElementById('form-social');
+if(formSocial) {
+    formSocial.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        const originalText = btn.innerText;
+        btn.innerText = "Salvando...";
+        btn.disabled = true;
+
+        const formData = new FormData(e.target);
+
+        try {
+            // Reutilizamos a rota /config pois ela aceita campos genéricos
+            await fetch('/config', { method: 'POST', body: formData });
+            alert("✅ Contatos atualizados com sucesso!");
+        } catch (error) {
+            alert("Erro ao salvar contatos.");
+        } finally {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    });
+}
+
+function sair() {
+    alert("Saindo do painel...");
+    window.location.href = '/login.html'; // Redireciona para login (se existir) ou home
 }
 
 // INICIALIZAÇÃO

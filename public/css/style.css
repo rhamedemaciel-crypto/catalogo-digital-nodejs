@@ -21,11 +21,23 @@ body {
     background-attachment: fixed;
 }
 
-/* --- CABEÇALHO --- */
 header {
     text-align: center;
-    padding: 15px;
-    margin-top: 50px;
+    /* Aumentamos o padding para a imagem aparecer mais */
+    padding: 40px 15px; 
+    margin-top: 0; /* Removemos a margem para colar no topo */
+    
+    /* --- AQUI ESTÁ A MÁGICA DA IMAGEM --- */
+    /* Camada preta (0.7) + Imagem de fundo */
+    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('../uploads/imagem-nova.png');
+    background-size: cover;   /* Redimensiona a imagem para caber na caixa */
+    background-position: center; /* Centraliza o foco da imagem */
+    
+    /* Detalhes visuais */
+    border-bottom: 2px solid var(--neon-orange);
+    box-shadow: 0 4px 20px rgba(255, 94, 0, 0.15); /* Sombra laranja suave */
+    position: relative;
+    z-index: 1000;
 }
 
 header h1 {
@@ -40,21 +52,29 @@ header h1 {
 }
 
 header p {
-    color: var(--neon-orange);
+    color: var(--text-white);
     font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 1px;
     text-transform: uppercase;
 }
 
-/* --- MENU LATERAL (SIDEBAR) --- */
 .menu-btn {
-    position: fixed; top: 20px; left: 20px;
-    background: rgba(0,0,0,0.6);
+    position: fixed; 
+    top: 15px; /* Ajustei levemente para alinhar com o novo header */
+    left: 15px;
+    
+    background: rgba(0,0,0,0.8); /* Um pouco mais escuro para leitura */
     border: 1px solid var(--neon-orange);
     color: var(--neon-orange);
-    font-size: 20px; padding: 8px 12px;
-    border-radius: 6px; z-index: 1500; cursor: pointer;
+    
+    /* --- TAMANHOS REDUZIDOS --- */
+    font-size: 10px;  /* Antes era 20px */
+    padding: 4px 6px; /* Antes era 8px 12px */
+    
+    border-radius: 6px; 
+    z-index: 1500; 
+    cursor: pointer;
     backdrop-filter: blur(5px);
     transition: 0.3s;
 }

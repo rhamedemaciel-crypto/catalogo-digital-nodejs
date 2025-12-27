@@ -26,5 +26,21 @@
     ],
     "total": 240,
     "status": "Pendente"
+  },
+  {
+    "id_pedido": 1766867050871,
+    "data": "27/12/2025, 17:24:10",
+    "cliente": "xablau",
+    "itens": [
+      {
+        "produto": "Cinturão Lombar",
+        "marca": "Cinturão hammer",
+        "preco": 220,
+        "qtd": 1,
+        "total": 220
+      }
+    ],
+    "total": 198,
+    "status": "Pendente"
   }
 ]

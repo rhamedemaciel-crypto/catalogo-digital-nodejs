@@ -292,6 +292,51 @@ app.post('/api/venda/:id/confirmar', (req, res) => {
 
     res.json({ message: 'Venda confirmada e estoque atualizado com sucesso!' });
 });
+/* --- ROTA PARA LER A CONFIGURAÇÃO (O site usa isso para carregar cores) --- */
+app.get('/config', (req, res) => {
+    try {
+        const configData = fs.readFileSync('data/loja-config.json');
+        res.json(JSON.parse(configData));
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao carregar configurações' });
+    }
+});
+
+/* --- ROTA PARA ATUALIZAR A CONFIGURAÇÃO (O Admin usa isso) --- */
+// upload.fields permite enviar múltiplas imagens com nomes diferentes
+app.post('/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' }]), (req, res) => {
+    try {
+        // 1. Ler a configuração atual
+        const currentConfig = JSON.parse(fs.readFileSync('data/loja-config.json'));
+        
+        // 2. Atualizar textos e cores vindos do formulário
+        const novaConfig = {
+            ...currentConfig,
+            nomeLoja: req.body.nomeLoja || currentConfig.nomeLoja,
+            corDestaque: req.body.corDestaque || currentConfig.corDestaque
+        };
+
+        // 3. Se enviou imagem nova para o FUNDO do site, atualiza
+        if (req.files['fundoSite']) {
+            // (Opcional: Deletar a antiga aqui se quiser economizar espaço)
+            novaConfig.fundoSite = req.files['fundoSite'][0].filename;
+        }
+
+        // 4. Se enviou imagem nova para o HEADER, atualiza
+        if (req.files['fundoHeader']) {
+            novaConfig.fundoHeader = req.files['fundoHeader'][0].filename;
+        }
+
+        // 5. Salvar no arquivo JSON
+        fs.writeFileSync('data/loja-config.json', JSON.stringify(novaConfig, null, 2));
+        
+        res.json({ message: 'Loja atualizada com sucesso!', config: novaConfig });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ erro: 'Erro ao atualizar configurações' });
+    }
+});
 
 // Iniciar
 app.listen(PORT, () => {
