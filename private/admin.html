@@ -92,7 +92,8 @@
         input:focus { border-color: #ff5e00; }
 
         .btn-acao { width: 100%; padding: 15px; border-radius: 8px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; }
-        .btn-salvar { background: #ff5e00; color: #000; }
+        .btn-salvar { background: #ff5e00; color: #000; transition: 0.3s; }
+        .btn-salvar:hover { background: #cc4b00; }
         .btn-add { background: #222; color: #ff5e00; border: 1px solid #ff5e00; margin-top: 10px; }
         .btn-remove { background: #330000; color: red; border: 1px solid red; padding: 8px; width: 100%; margin-top: 5px; }
 
@@ -134,21 +135,21 @@
         <aside class="sidebar" id="sidebarAdmin">
             <h2>QG ADMIN</h2>
             <nav>
-                <button onclick="mostrarAba('produtos'); toggleAdminMenu()" class="btn-nav ativo">
+                <button onclick="mostrarAba('produtos'); toggleAdminMenu()" class="btn-nav ativo" id="nav-produtos">
                     <i class="fas fa-box"></i> Produtos
                 </button>
-                <button onclick="mostrarAba('config'); toggleAdminMenu()" class="btn-nav">
+                <button onclick="mostrarAba('config'); toggleAdminMenu()" class="btn-nav" id="nav-config">
                     <i class="fas fa-paint-brush"></i> Aparência
                 </button>
                 
-                <button onclick="mostrarAba('social'); toggleAdminMenu()" class="btn-nav">
+                <button onclick="mostrarAba('social'); toggleAdminMenu()" class="btn-nav" id="nav-social">
                     <i class="fab fa-whatsapp"></i> Redes Sociais
                 </button>
 
                 <button onclick="window.location.href='/'" class="btn-nav">
                     <i class="fas fa-home"></i> Ver Loja
                 </button>
-                <button onclick="alert('Logout')" class="btn-nav btn-sair">
+                <button onclick="logout()" class="btn-nav btn-sair">
                     <i class="fas fa-sign-out-alt"></i> Sair
                 </button>
             </nav>
@@ -185,23 +186,18 @@
                     </form>
                     <div id="lista-cupons" style="margin-top:15px;"></div>
                 </div>
-                <div class="card">
-                    <h3 style="color:#fff;">VENDAS RECENTES</h3>
-                    <button onclick="carregarVendas()" class="btn-acao" style="background:#333; color:#fff; font-size:0.8rem; padding:10px;">ATUALIZAR</button>
-                    <div id="lista-vendas" style="margin-top:15px;"></div>
-                </div>
             </section>
 
             <section id="aba-config" style="display: none;">
                 <div class="card">
                     <h3 style="color:#fff;">PERSONALIZAR LOJA</h3>
-                    <p style="color:#888; font-size:0.9rem;">Mude o visual do site para datas especiais.</p>
+                    <p style="color:#888; font-size:0.9rem;">Mude o visual do site.</p>
                     <form id="form-tema">
                         <div class="form-group"><label>Nome da Loja</label><input type="text" id="config-nome" name="nomeLoja"></div>
-                        <div class="form-group"><label>Cor Principal (Neon)</label><input type="color" id="config-cor" name="corDestaque" style="height:50px; cursor:pointer;"></div>
+                        <div class="form-group"><label>Cor Principal</label><input type="color" id="config-cor" name="corDestaque" style="height:50px; cursor:pointer;"></div>
                         <div class="form-group"><label>Fundo do Site</label><input type="file" name="fundoSite" accept="image/*"></div>
                         <div class="form-group"><label>Banner Topo</label><input type="file" name="fundoHeader" accept="image/*"></div>
-                        <button type="submit" class="btn-acao btn-salvar">APLICAR TEMA</button>
+                        <button type="submit" class="btn-acao btn-salvar">SALVAR APARÊNCIA</button>
                     </form>
                 </div>
             </section>
@@ -209,19 +205,18 @@
             <section id="aba-social" style="display: none;">
                 <div class="card">
                     <h3 style="color:#fff;">REDES SOCIAIS & CONTATO</h3>
-                    <p style="color:#888; font-size:0.9rem;">Defina para onde os clientes serão enviados.</p>
+                    <p style="color:#888; font-size:0.9rem;">Configure os links de contato.</p>
                     
                     <form id="form-social">
                         <div class="form-group">
-                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp PEDIDOS (Finalizar Compra)</label>
-                            <input type="text" id="social-zap-pedidos" name="whatsappPedidos" placeholder="Ex: 5583999999999">
-                            <small style="color:#666">Digite apenas números (DDD + Numero)</small>
+                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp PEDIDOS (Principal)</label>
+                            <input type="text" id="social-zap-pedidos" name="whatsapp" placeholder="Ex: 5583999999999">
+                            <small style="color:#666">Digite apenas números (DDD + Numero). Ex: 5511999998888</small>
                         </div>
 
                         <div class="form-group">
-                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp ATENDIMENTO (Botão Flutuante)</label>
+                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp Suporte (Opcional)</label>
                             <input type="text" id="social-zap-float" name="whatsappFlutuante" placeholder="Ex: 5583999999999">
-                            <small style="color:#666">Pode ser um número diferente para dúvidas.</small>
                         </div>
 
                         <div class="form-group">
@@ -238,6 +233,7 @@
     </div>
 
     <script>
+        // --- FUNÇÕES DE LAYOUT ---
         function toggleAdminMenu() {
             const sidebar = document.getElementById('sidebarAdmin');
             const overlay = document.getElementById('overlayAdmin');
@@ -251,6 +247,92 @@
                 }
             }
         }
+
+        function mostrarAba(abaId) {
+            // Esconde todas
+            document.getElementById('aba-produtos').style.display = 'none';
+            document.getElementById('aba-config').style.display = 'none';
+            document.getElementById('aba-social').style.display = 'none';
+            
+            // Tira classe 'ativo' dos botões
+            document.querySelectorAll('.btn-nav').forEach(btn => btn.classList.remove('ativo'));
+
+            // Mostra a certa
+            document.getElementById('aba-' + abaId).style.display = 'block';
+            
+            // Adiciona classe ativo no botão certo (opcional, requer IDs nos botões)
+            if(document.getElementById('nav-' + abaId)) {
+                document.getElementById('nav-' + abaId).classList.add('ativo');
+            }
+        }
+
+        function logout() {
+            // Aqui você pode adicionar lógica para limpar sessão se houver
+            window.location.href = '/login.html';
+        }
+
+        // --- LÓGICA DE CONFIGURAÇÃO (O QUE CONSERTA O ZAP) ---
+        
+        // Função genérica para salvar formulários de configuração
+        async function salvarConfiguracao(event, formId) {
+            event.preventDefault();
+            const form = document.getElementById(formId);
+            const formData = new FormData(form); // Pega arquivos e textos
+
+            try {
+                // Envia para o backend corrigido (/api/config)
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Configurações salvas com sucesso!');
+                    // Opcional: Recarregar dados para confirmar visualmente
+                    carregarDadosConfig(); 
+                } else {
+                    alert('Erro ao salvar. Tente novamente.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Erro de conexão.');
+            }
+        }
+
+        // Função para carregar os dados atuais nos inputs
+        async function carregarDadosConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const config = await res.json();
+
+                // Preencher campos se existirem
+                if(config.nomeLoja) document.getElementById('config-nome').value = config.nomeLoja;
+                if(config.corDestaque) document.getElementById('config-cor').value = config.corDestaque;
+                
+                // Preencher Social (O IMPORTANTE)
+                if(config.whatsapp) document.getElementById('social-zap-pedidos').value = config.whatsapp;
+                if(config.whatsappFlutuante) document.getElementById('social-zap-float').value = config.whatsappFlutuante;
+                if(config.instagramLink) document.getElementById('social-insta').value = config.instagramLink;
+
+            } catch (error) {
+                console.error("Erro ao carregar configs:", error);
+            }
+        }
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Liga os eventos de submit dos formulários de config e social
+            document.getElementById('form-tema').addEventListener('submit', (e) => salvarConfiguracao(e, 'form-tema'));
+            document.getElementById('form-social').addEventListener('submit', (e) => salvarConfiguracao(e, 'form-social'));
+            
+            // Carrega os valores atuais
+            carregarDadosConfig();
+            
+            // AQUI VOCÊ DEVE MANTER O RESTO DO SEU JS DE PRODUTOS/CUPONS
+            // Se você usa o /js/admin.js para produtos, mantenha a tag script abaixo.
+            // Se a lógica de produtos estiver faltando, me avise que eu crio.
+        });
+
     </script>
 
     <script src="/js/admin.js"></script>

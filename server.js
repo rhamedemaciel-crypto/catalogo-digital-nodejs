@@ -33,20 +33,24 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// --- BANCO DE DADOS ---
+// --- BANCO DE DADOS (ARQUIVOS JSON) ---
 const ARQUIVO_PRODUTOS = path.join(__dirname, 'data', 'produtos.json');
 const ARQUIVO_VENDAS = path.join(__dirname, 'data', 'vendas.json');
 const ARQUIVO_CUPONS = path.join(__dirname, 'data', 'cupons.json');
-const ARQUIVO_CONFIG = path.join(__dirname, 'data', 'loja-config.json'); // Caminho da config
+const ARQUIVO_CONFIG = path.join(__dirname, 'data', 'loja-config.json'); 
 
+// Função auxiliar para ler JSON
 function lerJSON(arquivo) {
     if (!fs.existsSync(arquivo)) {
-        fs.writeFileSync(arquivo, '[]');
+        // Se for config, cria um padrão básico, se for array cria []
+        const conteudoPadrao = arquivo.includes('config') ? '{}' : '[]';
+        fs.writeFileSync(arquivo, conteudoPadrao);
     }
     const dados = fs.readFileSync(arquivo);
-    return JSON.parse(dados || '[]');
+    return JSON.parse(dados || (arquivo.includes('config') ? '{}' : '[]'));
 }
 
+// Função auxiliar para salvar JSON
 function salvarJSON(arquivo, dados) {
     fs.writeFileSync(arquivo, JSON.stringify(dados, null, 2));
 }
@@ -58,7 +62,7 @@ function salvarJSON(arquivo, dados) {
 // 1. Rota de Login
 app.post('/api/login', (req, res) => {
     const { senha } = req.body;
-    // IMPORTANTE: Mude 'admin123' para uma senha segura antes de entregar
+    // IMPORTANTE: Mude 'admin123' para uma senha mais forte em produção
     if (senha === 'admin123') { 
         req.session.usuarioLogado = true;
         res.json({ success: true });
@@ -162,7 +166,7 @@ app.delete('/api/produtos/:id', (req, res) => {
     res.json({ message: 'Produto deletado!' });
 });
 
-// Deletar APENAS uma variação (Rota auxiliar, caso precise)
+// Deletar APENAS uma variação
 app.delete('/api/produtos/:id/variacao/:index', (req, res) => {
     const idProduto = parseInt(req.params.id);
     const indexVariacao = parseInt(req.params.index);
@@ -296,11 +300,12 @@ app.post('/api/venda/:id/confirmar', (req, res) => {
 });
 
 // ========================================================
-// 🎨 CONFIGURAÇÕES DA LOJA (PERSONALIZAÇÃO)
+// 🎨 CONFIGURAÇÕES DA LOJA (CORRIGIDO)
 // ========================================================
 
 /* ROTA PARA LER A CONFIGURAÇÃO */
-app.get('/config', (req, res) => {
+// Correção: Adicionado '/api' para padronizar e o frontend encontrar
+app.get('/api/config', (req, res) => {
     try {
         if (!fs.existsSync(ARQUIVO_CONFIG)) {
             // Cria um arquivo padrão se não existir
@@ -309,13 +314,14 @@ app.get('/config', (req, res) => {
         const configData = fs.readFileSync(ARQUIVO_CONFIG);
         res.json(JSON.parse(configData));
     } catch (error) {
+        console.error(error);
         res.status(500).json({ erro: 'Erro ao carregar configurações' });
     }
 });
 
-/* ROTA PARA ATUALIZAR A CONFIGURAÇÃO (CORRIGIDA) */
-// Aceita campos de texto E arquivos
-app.post('/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' }]), (req, res) => {
+/* ROTA PARA ATUALIZAR A CONFIGURAÇÃO */
+// Correção: Adicionado '/api' e lógica para mesclar dados
+app.post('/api/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' }]), (req, res) => {
     try {
         // 1. Ler a configuração atual
         let currentConfig = {};
@@ -323,8 +329,8 @@ app.post('/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' 
             currentConfig = JSON.parse(fs.readFileSync(ARQUIVO_CONFIG));
         }
         
-        // 2. CORREÇÃO: Atualizar com TUDO que veio no corpo da requisição (req.body)
-        // Isso garante que whatsappPedidos, instagramLink, etc sejam salvos.
+        // 2. Atualizar com TUDO que veio no corpo da requisição (req.body)
+        // Isso salva whatsapp, instagram, corHeader, etc.
         const novaConfig = {
             ...currentConfig, // Mantém o que já existia
             ...req.body       // Sobrescreve com os novos textos enviados pelo form
@@ -351,7 +357,7 @@ app.post('/config', upload.fields([{ name: 'fundoSite' }, { name: 'fundoHeader' 
     }
 });
 
-// Iniciar
+// Iniciar Servidor
 app.listen(PORT, () => {
     console.log(`✅ Servidor rodando em http://localhost:${PORT}`);
 });

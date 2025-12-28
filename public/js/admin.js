@@ -2,11 +2,11 @@
 // 1. GESTÃO DE PRODUTOS (CRIAR E EDITAR)
 // ==========================================
 
-/* --- FUNÇÃO CORRIGIDA PARA MOBILE --- */
+/* --- FUNÇÃO PARA ADICIONAR VARIAÇÃO (MOBILE FRIENDLY) --- */
 function adicionarLinhaVariacao(dados = {}) {
     const container = document.getElementById('container-variacoes');
     const div = document.createElement('div');
-    div.className = 'variacao-row'; // Classe que o CSS usa para empilhar no mobile
+    div.className = 'variacao-row'; 
 
     div.innerHTML = `
         <div class="form-group" style="margin-bottom:5px;">
@@ -47,7 +47,7 @@ function iniciarEdicao(produto) {
 
     // 3. Muda o visual dos botões
     document.getElementById('btn-submit').innerText = "🔄 ATUALIZAR PRODUTO";
-    document.getElementById('btn-submit').style.background = "linear-gradient(45deg, #9d00ff, #7a00cc)"; // Roxo para update
+    document.getElementById('btn-submit').style.background = "linear-gradient(45deg, #9d00ff, #7a00cc)"; 
     document.getElementById('btn-cancelar').style.display = 'block';
     
     // 4. Leva a tela para o topo
@@ -58,11 +58,11 @@ function cancelarEdicao() {
     document.getElementById('form-produto').reset();
     document.getElementById('id-produto-editando').value = '';
     document.getElementById('container-variacoes').innerHTML = '';
-    adicionarLinhaVariacao(); // Uma linha vazia padrão
+    adicionarLinhaVariacao(); 
     
     // Reseta botões
     document.getElementById('btn-submit').innerText = "💾 SALVAR NO ESTOQUE";
-    document.getElementById('btn-submit').style.background = ""; // Volta ao CSS original (Verde)
+    document.getElementById('btn-submit').style.background = ""; 
     document.getElementById('btn-cancelar').style.display = 'none';
 }
 
@@ -82,7 +82,7 @@ document.getElementById('form-produto').addEventListener('submit', async (e) => 
     const variacoes = [];
     document.querySelectorAll('.variacao-row').forEach(linha => {
         variacoes.push({
-            marca: linha.querySelector('.var-marca').value, // Ajustado para classe correta
+            marca: linha.querySelector('.var-marca').value,
             preco_venda: parseFloat(linha.querySelector('.var-preco').value) || 0,
             estoque: parseInt(linha.querySelector('.var-estoque').value) || 0
         });
@@ -112,9 +112,10 @@ document.getElementById('form-produto').addEventListener('submit', async (e) => 
     } catch (error) { console.error(error); }
 });
 
-// LISTAGEM
+// LISTAGEM DE PRODUTOS
 async function carregarListaAdmin() {
     const container = document.getElementById('lista-produtos-admin');
+    if(!container) return; // Proteção caso elemento não exista
     container.innerHTML = '<p style="color:#888">Carregando inventário...</p>';
 
     try {
@@ -159,11 +160,11 @@ async function carregarListaAdmin() {
     } catch (e) { console.error(e); }
 }
 
-// Função auxiliar para encontrar o objeto completo e chamar a edição
 function prepararEdicao(id) {
     const produto = window.todosProdutos.find(p => p.id === id);
     if(produto) {
         iniciarEdicao(produto);
+        mostrarAba('produtos'); // Garante que a aba certa está aberta
     }
 }
 
@@ -261,37 +262,37 @@ async function confirmarVenda(id) {
 // 4. GESTÃO DE ABAS E CONFIGURAÇÕES
 // ==========================================
 
-/* --- LÓGICA DE ABAS (Produtos vs Config vs Social) --- */
+/* --- LÓGICA DE ABAS --- */
 function mostrarAba(aba) {
-    // 1. Esconde tudo
+    // Esconde tudo
     document.getElementById('aba-produtos').style.display = 'none';
     document.getElementById('aba-config').style.display = 'none';
-    document.getElementById('aba-social').style.display = 'none'; // Nova aba
+    document.getElementById('aba-social').style.display = 'none';
     
-    // 2. Remove classe ativo dos botões
+    // Remove classe ativo
     document.querySelectorAll('.btn-nav').forEach(b => b.classList.remove('ativo'));
 
-    // 3. Mostra a escolhida e ativa o botão
+    // Lógica para mostrar a certa e carregar dados se necessário
     if (aba === 'produtos') {
         document.getElementById('aba-produtos').style.display = 'block';
-        document.querySelectorAll('.btn-nav')[0].classList.add('ativo');
+        if(document.getElementById('nav-produtos')) document.getElementById('nav-produtos').classList.add('ativo');
     } 
     else if (aba === 'config') {
         document.getElementById('aba-config').style.display = 'block';
-        document.querySelectorAll('.btn-nav')[1].classList.add('ativo');
+        if(document.getElementById('nav-config')) document.getElementById('nav-config').classList.add('ativo');
         carregarConfiguracoesNoForm();
     }
-    else if (aba === 'social') { // NOVA LÓGICA
+    else if (aba === 'social') {
         document.getElementById('aba-social').style.display = 'block';
-        document.querySelectorAll('.btn-nav')[2].classList.add('ativo');
-        carregarConfiguracoesNoForm(); // Carrega os contatos também
+        if(document.getElementById('nav-social')) document.getElementById('nav-social').classList.add('ativo');
+        carregarConfiguracoesNoForm();
     }
 }
 
-/* --- CARREGAR DADOS NO FORMULÁRIO (Config + Social) --- */
+/* --- CARREGAR DADOS (CORRIGIDO: usa /api/config) --- */
 async function carregarConfiguracoesNoForm() {
     try {
-        const res = await fetch('/config');
+        const res = await fetch('/api/config'); // CORREÇÃO: Rota atualizada
         const config = await res.json();
 
         // Campos Visuais
@@ -300,9 +301,15 @@ async function carregarConfiguracoesNoForm() {
             if (config.corDestaque) document.getElementById('config-cor').value = config.corDestaque;
         }
 
-        // Campos Sociais (Novos)
+        // Campos Sociais (CORREÇÃO: whatsapp vs whatsappPedidos)
         if (document.getElementById('social-zap-pedidos')) {
-            if (config.whatsappPedidos) document.getElementById('social-zap-pedidos').value = config.whatsappPedidos;
+            // Verifica 'whatsapp' que é o padrão novo, ou 'whatsappPedidos' legado
+            if (config.whatsapp) {
+                document.getElementById('social-zap-pedidos').value = config.whatsapp;
+            } else if (config.whatsappPedidos) {
+                document.getElementById('social-zap-pedidos').value = config.whatsappPedidos;
+            }
+
             if (config.whatsappFlutuante) document.getElementById('social-zap-float').value = config.whatsappFlutuante;
             if (config.instagramLink) document.getElementById('social-insta').value = config.instagramLink;
         }
@@ -312,58 +319,48 @@ async function carregarConfiguracoesNoForm() {
     }
 }
 
-/* --- SALVAR APARÊNCIA --- */
+/* --- FUNÇÃO GENÉRICA DE SALVAR CONFIG (CORRIGIDO: usa /api/config) --- */
+async function salvarConfigGeneric(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const originalText = btn.innerText;
+    btn.innerText = "Salvando...";
+    btn.disabled = true;
+
+    const formData = new FormData(e.target);
+
+    try {
+        // CORREÇÃO: Rota atualizada para /api/config
+        await fetch('/api/config', { method: 'POST', body: formData });
+        alert("✅ Configurações salvas com sucesso!");
+    } catch (error) {
+        alert("Erro ao salvar.");
+        console.error(error);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
+
+// Listeners de Configuração
 const formTema = document.getElementById('form-tema');
-if (formTema) {
-    formTema.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = e.target.querySelector('button');
-        const original = btn.innerText;
-        btn.innerText = "Salvando...";
-        btn.disabled = true;
+if (formTema) formTema.addEventListener('submit', salvarConfigGeneric);
 
-        const formData = new FormData(e.target);
-
-        try {
-            await fetch('/config', { method: 'POST', body: formData });
-            alert("✨ Tema atualizado! Recarregue a loja.");
-        } catch (error) { alert("Erro ao salvar."); } 
-        finally { btn.innerText = original; btn.disabled = false; }
-    });
-}
-
-/* --- SALVAR REDES SOCIAIS (NOVO) --- */
 const formSocial = document.getElementById('form-social');
-if(formSocial) {
-    formSocial.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = e.target.querySelector('button');
-        const originalText = btn.innerText;
-        btn.innerText = "Salvando...";
-        btn.disabled = true;
+if (formSocial) formSocial.addEventListener('submit', salvarConfigGeneric);
 
-        const formData = new FormData(e.target);
-
-        try {
-            // Reutilizamos a rota /config pois ela aceita campos genéricos
-            await fetch('/config', { method: 'POST', body: formData });
-            alert("✅ Contatos atualizados com sucesso!");
-        } catch (error) {
-            alert("Erro ao salvar contatos.");
-        } finally {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
-    });
-}
 
 function sair() {
-    alert("Saindo do painel...");
-    window.location.href = '/login.html'; // Redireciona para login (se existir) ou home
+    // Opcional: Chamar rota de logout no back
+    window.location.href = '/login.html'; 
 }
 
-// INICIALIZAÇÃO
-adicionarLinhaVariacao();
-carregarListaAdmin();
-carregarCupons();
-carregarVendas();
+// INICIALIZAÇÃO AO CARREGAR PÁGINA
+document.addEventListener('DOMContentLoaded', () => {
+    adicionarLinhaVariacao();
+    carregarListaAdmin();
+    carregarCupons();
+    carregarVendas();
+    // Carrega dados iniciais para não vir vazio
+    carregarConfiguracoesNoForm();
+});
