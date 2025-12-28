@@ -24,7 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
 /* --- SISTEMA DE TEMAS E CONFIGURAÇÕES --- */
 async function carregarTema() {
     try {
-        const response = await fetch('/config');
+        // CORREÇÃO 1: Rota ajustada para /api/config
+        const response = await fetch('/api/config');
         if (!response.ok) throw new Error('Falha ao carregar config');
         
         const tema = await response.json();
@@ -55,20 +56,27 @@ async function carregarTema() {
             document.title = tema.nomeLoja + " | Loja Oficial";
         }
 
-        // 5. ATUALIZA REDES SOCIAIS (NOVO)
+        // 5. ATUALIZA REDES SOCIAIS (CORRIGIDO)
         if (tema.instagramLink) {
             const btnInsta = document.getElementById('link-insta');
             if(btnInsta) btnInsta.href = tema.instagramLink;
         }
 
-        if (tema.whatsappFlutuante) {
-            const btnWhats = document.getElementById('link-whats-float');
-            // Link genérico para dúvidas
-            if(btnWhats) btnWhats.href = `https://wa.me/${tema.whatsappFlutuante}?text=Olá, vim pelo site e tenho uma dúvida.`;
+        // Configura o botão flutuante
+        const btnWhats = document.getElementById('link-whats-float');
+        if (btnWhats) {
+            // Tenta usar o número de suporte, se não tiver, usa o principal, se não tiver, usa um padrão
+            const numeroFloat = tema.whatsappFlutuante || tema.whatsapp || tema.whatsappPedidos;
+            
+            if (numeroFloat) {
+                // Limpa o número para evitar erros no link
+                const numLimpo = numeroFloat.replace(/\D/g, ''); 
+                btnWhats.href = `https://wa.me/${numLimpo}?text=Olá, vim pelo site e tenho uma dúvida.`;
+            }
         }
 
     } catch (error) {
-        console.log("Usando configurações padrão.");
+        console.log("Usando configurações padrão (Erro ao carregar tema):", error);
     }
 }
 
@@ -396,10 +404,13 @@ async function finalizarCompra() {
         
         msg += `Aguardo a chave PIX para pagamento!`;
 
-        // 3. Redireciona para o WhatsApp configurado no Admin
-        // Se não tiver configurado, usa um número padrão
-        const tel = configLoja.whatsappPedidos || "5583999999999"; 
+        // 3. CORREÇÃO DE REDIRECIONAMENTO:
+        // Usa o 'whatsapp' (novo padrão) ou 'whatsappPedidos' (antigo) ou padrão internacional se não tiver nada
+        const telCru = configLoja.whatsapp || configLoja.whatsappPedidos || "5511999999999"; 
         
+        // Remove caracteres não numéricos para garantir que o link funcione
+        const tel = telCru.replace(/\D/g, '');
+
         // Limpa tudo
         carrinho = [];
         descontoAtual = 0;
