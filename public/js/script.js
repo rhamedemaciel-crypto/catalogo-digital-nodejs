@@ -5,7 +5,12 @@ let produtoSelecionado = null;
 let variacaoSelecionada = null;
 let descontoAtual = 0;
 let categoriaAtual = 'todos'; 
-let configLoja = {}; // Guardará as configurações (Cores, Links, Tel)
+let configLoja = {}; 
+
+/* --- UTILITÁRIOS (Formatação de Dinheiro) --- */
+const formatarMoeda = (valor) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+};
 
 /* --- INICIALIZAÇÃO (Ao carregar a página) --- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarCarrinhoLocal();
     atualizarContador();
     
-    // Configura a busca dinâmica enquanto digita
-    const buscaInput = document.getElementById('campo-busca');
+    // Configura a busca dinâmica
+    const buscaInput = document.getElementById('campo-busca') || document.getElementById('searchInput'); // Suporta ambos os nomes
     if(buscaInput) {
         buscaInput.addEventListener('input', filtrarProdutos);
     }
@@ -24,12 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
 /* --- SISTEMA DE TEMAS E CONFIGURAÇÕES --- */
 async function carregarTema() {
     try {
-        // CORREÇÃO 1: Rota ajustada para /api/config
         const response = await fetch('/api/config');
         if (!response.ok) throw new Error('Falha ao carregar config');
         
         const tema = await response.json();
-        configLoja = tema; // Salva na memória global para usar no checkout
+        configLoja = tema; 
 
         // 1. Aplica a Cor Neon
         if (tema.corDestaque) {
@@ -56,20 +60,17 @@ async function carregarTema() {
             document.title = tema.nomeLoja + " | Loja Oficial";
         }
 
-        // 5. ATUALIZA REDES SOCIAIS (CORRIGIDO)
+        // 5. Atualiza Redes Sociais
         if (tema.instagramLink) {
             const btnInsta = document.getElementById('link-insta');
             if(btnInsta) btnInsta.href = tema.instagramLink;
         }
 
-        // Configura o botão flutuante
+        // Configura o botão flutuante do WhatsApp
         const btnWhats = document.getElementById('link-whats-float');
         if (btnWhats) {
-            // Tenta usar o número de suporte, se não tiver, usa o principal, se não tiver, usa um padrão
             const numeroFloat = tema.whatsappFlutuante || tema.whatsapp || tema.whatsappPedidos;
-            
             if (numeroFloat) {
-                // Limpa o número para evitar erros no link
                 const numLimpo = numeroFloat.replace(/\D/g, ''); 
                 btnWhats.href = `https://wa.me/${numLimpo}?text=Olá, vim pelo site e tenho uma dúvida.`;
             }
@@ -92,7 +93,6 @@ function toggleMenu() {
 }
 
 /* --- LÓGICA DE PRODUTOS --- */
-
 async function carregarProdutos() {
     try {
         const res = await fetch('/api/produtos');
@@ -102,7 +102,7 @@ async function carregarProdutos() {
         filtrarProdutos();      
     } catch (erro) {
         console.error("Erro ao carregar:", erro);
-        const lista = document.getElementById('lista-produtos');
+        const lista = document.getElementById('lista-produtos') || document.getElementById('product-list');
         if(lista) lista.innerHTML = '<p style="color:white; text-align:center; padding: 20px;">Erro ao carregar loja. Verifique a conexão.</p>';
     }
 }
@@ -132,10 +132,10 @@ function renderizarCategorias() {
 }
 
 function filtrarProdutos() {
-    const buscaInput = document.getElementById('campo-busca');
+    const buscaInput = document.getElementById('campo-busca') || document.getElementById('searchInput');
     const termo = buscaInput ? buscaInput.value.toLowerCase() : '';
 
-    const container = document.getElementById('lista-produtos');
+    const container = document.getElementById('lista-produtos') || document.getElementById('product-list');
     if (!container) return;
     
     container.innerHTML = '';
@@ -153,19 +153,26 @@ function filtrarProdutos() {
     }
 
     filtrados.forEach(p => {
-        const precos = p.variacoes.map(v => v.preco_venda);
-        const menorPreco = precos.length > 0 ? Math.min(...precos) : 0;
+        // Lógica de preço: pega o menor da variação ou o preço base
+        let menorPreco = 0;
+        if (p.variacoes && p.variacoes.length > 0) {
+            const precos = p.variacoes.map(v => v.preco_venda || v.preco); // Suporta 'preco_venda' ou 'preco'
+            menorPreco = Math.min(...precos);
+        } else {
+            menorPreco = p.preco || 0;
+        }
+
         const imgUrl = p.imagem ? p.imagem : 'https://via.placeholder.com/150';
 
         const div = document.createElement('div');
-        div.className = 'card';
+        div.className = 'card product-card'; // Adicionado classes extras para compatibilidade CSS
         div.onclick = (e) => { if(e.target.tagName !== 'BUTTON') abrirModal(p.id); };
         
         div.innerHTML = `
             <img src="${imgUrl}" alt="${p.nome}" loading="lazy">
             <div class="card-info">
                 <h3>${p.nome}</h3>
-                <div class="preco">R$ ${menorPreco.toFixed(2)}</div>
+                <div class="preco">${formatarMoeda(menorPreco)}</div>
                 <button onclick="abrirModal(${p.id})">COMPRAR</button>
             </div>
         `;
@@ -182,51 +189,66 @@ function abrirModal(id) {
     document.getElementById('modal-img').src = produtoSelecionado.imagem || 'https://via.placeholder.com/150';
     document.getElementById('modal-qtd').value = 1;
     
-    const variacoesOrdenadas = [...produtoSelecionado.variacoes].sort((a, b) => {
-        return a.marca.localeCompare(b.marca);
-    });
+    // Ordena variações
+    const variacoesOrdenadas = produtoSelecionado.variacoes ? [...produtoSelecionado.variacoes].sort((a, b) => {
+        const marcaA = a.marca || a.tamanho || '';
+        const marcaB = b.marca || b.tamanho || '';
+        return marcaA.localeCompare(marcaB);
+    }) : [];
 
     const lista = document.getElementById('modal-opcoes');
     lista.innerHTML = '';
     
     if (variacoesOrdenadas.length === 0) {
-        lista.innerHTML = '<p style="color:red">Produto indisponível no momento.</p>';
-        return;
+        // Caso produto simples sem variação
+        variacaoSelecionada = { 
+            marca: 'Único', 
+            preco_venda: produtoSelecionado.preco || 0, 
+            estoque: 999 
+        };
+        lista.innerHTML = '<p style="color:#ccc">Produto único</p>';
+        document.getElementById('modal-preco').innerText = formatarMoeda(produtoSelecionado.preco || 0);
+    } else {
+        // Com variações
+        selVar(variacoesOrdenadas[0], 0);
+
+        variacoesOrdenadas.forEach((v, idx) => {
+            const div = document.createElement('div');
+            div.className = 'opcao-item';
+            div.id = `var-btn-${idx}`;
+            
+            const estoque = v.estoque !== undefined ? v.estoque : 99;
+            const semEstoque = estoque <= 0;
+            const preco = v.preco_venda || v.preco || 0;
+            const nomeVar = v.marca || v.tamanho || 'Padrão';
+            
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between;">
+                    <strong>${nomeVar}</strong>
+                    <span>${formatarMoeda(preco)}</span>
+                </div>
+                ${semEstoque ? '<small style="color:red; font-size:0.7em">(Esgotado)</small>' : ''}
+            `;
+
+            if (!semEstoque) {
+                div.onclick = () => selVar(v, idx);
+            } else {
+                div.style.opacity = '0.5';
+                div.style.cursor = 'not-allowed';
+            }
+            
+            lista.appendChild(div);
+        });
     }
 
-    selVar(variacoesOrdenadas[0], 0);
-
-    variacoesOrdenadas.forEach((v, idx) => {
-        const div = document.createElement('div');
-        div.className = 'opcao-item';
-        div.id = `var-btn-${idx}`;
-        
-        const semEstoque = v.estoque <= 0;
-        
-        div.innerHTML = `
-            <div style="display:flex; justify-content:space-between;">
-                <strong>${v.marca}</strong>
-                <span>R$ ${v.preco_venda.toFixed(2)}</span>
-            </div>
-            ${semEstoque ? '<small style="color:red; font-size:0.7em">(Esgotado)</small>' : ''}
-        `;
-
-        if (!semEstoque) {
-            div.onclick = () => selVar(v, idx);
-        } else {
-            div.style.opacity = '0.5';
-            div.style.cursor = 'not-allowed';
-        }
-        
-        lista.appendChild(div);
-    });
-
-    document.getElementById('modal-produto').style.display = 'flex';
+    const modal = document.getElementById('modal-produto');
+    if(modal) modal.style.display = 'flex';
 }
 
 function selVar(variacao, idx) {
     variacaoSelecionada = variacao;
-    document.getElementById('modal-preco').innerText = "R$ " + variacao.preco_venda.toFixed(2);
+    const preco = variacao.preco_venda || variacao.preco || 0;
+    document.getElementById('modal-preco').innerText = formatarMoeda(preco);
     
     const todos = document.querySelectorAll('.opcao-item');
     todos.forEach(el => { 
@@ -237,7 +259,7 @@ function selVar(variacao, idx) {
     
     const atual = document.getElementById(`var-btn-${idx}`);
     if(atual) {
-        atual.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--neon-orange');
+        atual.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--neon-orange') || '#ff6600';
         atual.style.color = 'white';
         atual.style.background = '#333';
     }
@@ -247,18 +269,33 @@ function adicionarAoCarrinhoModal() {
     if(!variacaoSelecionada) return alert("Selecione uma opção!");
     
     const qtd = parseInt(document.getElementById('modal-qtd').value) || 1;
+    const estoque = variacaoSelecionada.estoque !== undefined ? variacaoSelecionada.estoque : 999;
 
-    if(qtd > variacaoSelecionada.estoque) {
-        return alert(`Apenas ${variacaoSelecionada.estoque} unidades disponíveis!`);
+    if(qtd > estoque) {
+        return alert(`Apenas ${estoque} unidades disponíveis!`);
     }
 
-    carrinho.push({
-        produto: produtoSelecionado.nome,
-        marca: variacaoSelecionada.marca,
-        preco: variacaoSelecionada.preco_venda,
-        qtd: qtd,
-        total: variacaoSelecionada.preco_venda * qtd
-    });
+    const preco = variacaoSelecionada.preco_venda || variacaoSelecionada.preco || 0;
+    const nomeVar = variacaoSelecionada.marca || variacaoSelecionada.tamanho || 'Único';
+
+    // Verifica se já existe no carrinho para somar
+    const existente = carrinho.find(item => item.produto === produtoSelecionado.nome && item.marca === nomeVar);
+
+    if(existente) {
+        if(existente.qtd + qtd > estoque) {
+            return alert("Estoque limite atingido no carrinho.");
+        }
+        existente.qtd += qtd;
+        existente.total = existingItem.qtd * existingItem.preco;
+    } else {
+        carrinho.push({
+            produto: produtoSelecionado.nome,
+            marca: nomeVar,
+            preco: preco,
+            qtd: qtd,
+            total: preco * qtd
+        });
+    }
 
     salvarCarrinho();
     atualizarContador();
@@ -272,7 +309,6 @@ function adicionarAoCarrinhoModal() {
 }
 
 /* --- CARRINHO E CHECKOUT --- */
-
 function abrirCarrinho() {
     const lista = document.getElementById('itens-carrinho');
     lista.innerHTML = '';
@@ -294,7 +330,7 @@ function abrirCarrinho() {
                         <small style="color:#ccc;">${item.marca}</small>
                     </div>
                     <div style="text-align:right;">
-                        <span style="color:var(--neon-orange); font-weight:bold;">R$ ${item.total.toFixed(2)}</span><br>
+                        <span style="color:var(--neon-orange); font-weight:bold;">${formatarMoeda(item.total)}</span><br>
                         <button onclick="rmItem(${idx})" style="color:#ff4444; background:none; border:none; cursor:pointer; font-size:0.8em; margin-top:5px;">Excluir</button>
                     </div>
                 </div>
@@ -302,13 +338,13 @@ function abrirCarrinho() {
     });
 
     let totalFinal = total;
-    let htmlTotal = `Total: R$ ${total.toFixed(2)}`;
+    let htmlTotal = `Total: ${formatarMoeda(total)}`;
 
     if(descontoAtual > 0) {
         totalFinal = total * (1 - descontoAtual/100);
         htmlTotal = `
-            <span style="text-decoration: line-through; font-size: 0.8em; color: #999;">R$ ${total.toFixed(2)}</span><br>
-            <span style="color:#00ff88; font-size:1.2em; font-weight:bold;">R$ ${totalFinal.toFixed(2)}</span> 
+            <span style="text-decoration: line-through; font-size: 0.8em; color: #999;">${formatarMoeda(total)}</span><br>
+            <span style="color:#00ff88; font-size:1.2em; font-weight:bold;">${formatarMoeda(totalFinal)}</span> 
             <small style="color:#00ff88">(${descontoAtual}% OFF)</small>
         `;
     }
@@ -349,7 +385,7 @@ async function aplicarCupom() {
     }
 }
 
-/* --- FINALIZAR COMPRA (ATUALIZADO COM NÚMERO DO ADMIN) --- */
+/* --- FINALIZAR COMPRA (Melhorado e Conectado ao Server) --- */
 async function finalizarCompra() {
     if(carrinho.length === 0) return alert("Seu carrinho está vazio!");
     
@@ -358,7 +394,7 @@ async function finalizarCompra() {
     
     if(!nome) {
         alert("Por favor, digite seu nome para identificarmos o pedido.");
-        nomeInput.focus();
+        if(nomeInput) nomeInput.focus();
         return;
     }
 
@@ -366,71 +402,77 @@ async function finalizarCompra() {
     let totalBruto = carrinho.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
     let totalFinal = totalBruto * (1 - descontoAtual/100);
 
-    // Salvar Venda
+    // Preparar dados para o Servidor (Conforme Passo 1)
     const pedidoParaSalvar = {
         cliente: nome,
-        itens: carrinho,
+        produtos: carrinho, // Alterado de 'itens' para 'produtos' para padronizar
         total: totalFinal,
         data: new Date().toISOString()
     };
 
     try {
-        await fetch('/api/venda', {
+        // 1. Envia para o servidor e ESPERA a resposta
+        const response = await fetch('/api/vendas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(pedidoParaSalvar)
         });
 
-        // Montar Mensagem WhatsApp
-        let msg = `*NOVO PEDIDO - ${configLoja.nomeLoja || 'TROPA DO BRUXO'}* 🧙‍♂️\n\n`;
-        msg += `*Cliente:* ${nome}\n`;
-        msg += `------------------------------\n`;
-        
-        carrinho.forEach(item => {
-            msg += `📦 ${item.qtd}x ${item.produto}\n`;
-            msg += `   Opção: ${item.marca}\n`;
-            msg += `   Valor: R$ ${(item.preco * item.qtd).toFixed(2)}\n`;
-        });
-        
-        msg += `------------------------------\n`;
+        const resultado = await response.json();
 
-        if(descontoAtual > 0) {
-            msg += `Subtotal: R$ ${totalBruto.toFixed(2)}\n`;
-            msg += `Desconto: -${descontoAtual}%\n`;
-            msg += `*TOTAL A PAGAR: R$ ${totalFinal.toFixed(2)}* ✅\n\n`;
+        if (resultado.success || resultado.message) {
+            // 2. Se salvou, monta a mensagem do WhatsApp
+            let msg = `*NOVO PEDIDO - ${configLoja.nomeLoja || 'LOJA'}* 🛒\n\n`;
+            msg += `*Cliente:* ${nome}\n`;
+            if(resultado.id) msg += `*Pedido #:* ${resultado.id}\n`;
+            msg += `------------------------------\n`;
+            
+            carrinho.forEach(item => {
+                msg += `📦 ${item.qtd}x ${item.produto}\n`;
+                msg += `   Opção: ${item.marca}\n`;
+                msg += `   Valor: ${formatarMoeda(item.preco * item.qtd)}\n`;
+            });
+            
+            msg += `------------------------------\n`;
+
+            if(descontoAtual > 0) {
+                msg += `Subtotal: ${formatarMoeda(totalBruto)}\n`;
+                msg += `Desconto: -${descontoAtual}%\n`;
+                msg += `*TOTAL: ${formatarMoeda(totalFinal)}* ✅\n\n`;
+            } else {
+                msg += `*TOTAL: ${formatarMoeda(totalBruto)}* ✅\n\n`;
+            }
+            
+            msg += `Aguardo instruções de pagamento!`;
+
+            // Configura telefone
+            const telCru = configLoja.whatsapp || configLoja.whatsappPedidos || "5511999999999"; 
+            const tel = telCru.replace(/\D/g, '');
+
+            // Limpa Carrinho
+            carrinho = [];
+            descontoAtual = 0;
+            salvarCarrinho();
+            atualizarContador();
+            fecharModal('modal-carrinho');
+            if(nomeInput) nomeInput.value = '';
+
+            // Redireciona
+            window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
         } else {
-            msg += `*TOTAL A PAGAR: R$ ${totalBruto.toFixed(2)}* ✅\n\n`;
+            alert("Erro ao salvar pedido no sistema. Tente novamente.");
         }
-        
-        msg += `Aguardo a chave PIX para pagamento!`;
-
-        // 3. CORREÇÃO DE REDIRECIONAMENTO:
-        // Usa o 'whatsapp' (novo padrão) ou 'whatsappPedidos' (antigo) ou padrão internacional se não tiver nada
-        const telCru = configLoja.whatsapp || configLoja.whatsappPedidos || "5511999999999"; 
-        
-        // Remove caracteres não numéricos para garantir que o link funcione
-        const tel = telCru.replace(/\D/g, '');
-
-        // Limpa tudo
-        carrinho = [];
-        descontoAtual = 0;
-        salvarCarrinho();
-        atualizarContador();
-        fecharModal('modal-carrinho');
-        if(nomeInput) nomeInput.value = '';
-
-        // Abre WhatsApp
-        window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
 
     } catch (erro) {
         console.error(erro);
-        alert("Erro ao processar pedido. Tente novamente.");
+        alert("Erro de conexão. Verifique sua internet.");
     }
 }
 
 /* --- FUNÇÕES AUXILIARES --- */
 function fecharModal(id) { 
-    document.getElementById(id).style.display = 'none'; 
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none'; 
 }
 
 function salvarCarrinho() { 
@@ -446,4 +488,15 @@ function atualizarContador() {
     const contador = document.getElementById('contador-carrinho');
     const qtdTotal = carrinho.reduce((acc, item) => acc + item.qtd, 0);
     if(contador) contador.innerText = qtdTotal; 
+}
+
+// Fecha modal ao clicar fora
+window.onclick = function(event) {
+    const modals = ['modal-produto', 'modal-carrinho'];
+    modals.forEach(id => {
+        const modal = document.getElementById(id);
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    });
 }

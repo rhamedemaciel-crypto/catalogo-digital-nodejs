@@ -2,8 +2,10 @@
 // 0. INICIALIZAÇÃO & NAVEGAÇÃO
 // ==========================================
 
+// 🔥 CORREÇÃO PRINCIPAL: Endereço fixo do Servidor
+const API_URL = "http://localhost:3000";
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Carrega todas as seções iniciais
     carregarDashboard(); 
     adicionarLinhaVariacao(); 
     carregarListaAdmin();
@@ -11,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarVendas();
     carregarConfiguracoesNoForm();
     
-    // Listeners de Formulários de Configuração
     const formTema = document.getElementById('form-tema');
     if (formTema) formTema.addEventListener('submit', salvarConfigGeneric);
 
@@ -19,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formSocial) formSocial.addEventListener('submit', salvarConfigGeneric);
 });
 
-// Funções de Menu (Globais para o HTML acessar)
 window.toggleAdminMenu = function() {
     const sidebar = document.getElementById('sidebarAdmin');
     const overlay = document.getElementById('overlayAdmin');
@@ -35,7 +35,6 @@ window.toggleAdminMenu = function() {
 };
 
 window.mostrarAba = function(aba) {
-    // 1. Esconde todas as abas
     ['dashboard', 'pedidos', 'produtos', 'config', 'social'].forEach(id => {
         const el = document.getElementById('aba-' + id);
         if(el) el.style.display = 'none';
@@ -44,14 +43,12 @@ window.mostrarAba = function(aba) {
         if(btn) btn.classList.remove('ativo');
     });
 
-    // 2. Mostra a aba selecionada
     const abaAlvo = document.getElementById('aba-' + aba);
     if(abaAlvo) abaAlvo.style.display = 'block';
     
     const btnAlvo = document.getElementById('nav-' + aba);
     if(btnAlvo) btnAlvo.classList.add('ativo');
 
-    // 3. Recarrega dados específicos (Garante que está atualizado)
     if (aba === 'dashboard') carregarDashboard();
     if (aba === 'pedidos') carregarVendas();
     if (aba === 'produtos') carregarListaAdmin();
@@ -63,23 +60,94 @@ window.logout = function() {
 };
 
 // ==========================================
-// 1. DASHBOARD (GRÁFICOS E KPI) - NOVO
+// 1. DASHBOARD & RELATÓRIOS FINANCEIROS
 // ==========================================
 let chartInstance = null; 
 
 async function carregarDashboard() {
     try {
-        const res = await fetch('/api/dashboard');
-        const data = await res.json();
+        const periodo = document.getElementById('filtro-periodo').value || '7dias';
+        
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/dashboard`);
+        const data = await res.json(); 
+        
+        const todasVendasRes = await fetch(`${API_URL}/api/vendas`);
+        const todasVendas = await todasVendasRes.json();
+        
+        const hoje = new Date();
+        let faturamento = 0;
+        let pendentes = 0;
+        let aprovados = 0;
+        let ticketSoma = 0;
+        
+        // Filtro de data
+        const vendasFiltradas = todasVendas.filter(v => {
+            if (v.status === 'Pendente') pendentes++; 
+            if (v.status !== 'Aprovado') return false;
 
-        // Preenche Cards do Topo (Se existirem na tela)
+            const dataVenda = new Date(v.data);
+            const diffTime = Math.abs(hoje - dataVenda);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+            if (periodo === 'hoje') return diffDays <= 1;
+            if (periodo === '7dias') return diffDays <= 7;
+            if (periodo === '30dias') return diffDays <= 30;
+            return true;
+        });
+
+        // Calcular Totais
+        vendasFiltradas.forEach(v => {
+            const val = parseFloat(v.total) || 0;
+            faturamento += val;
+            aprovados++;
+            ticketSoma += val;
+        });
+
+        const ticketMedio = aprovados > 0 ? ticketSoma / aprovados : 0;
+
+        // Atualizar Cards
         if(document.getElementById('dash-faturamento')) {
-            document.getElementById('dash-faturamento').innerText = `R$ ${data.faturamentoHoje.toFixed(2)}`;
-            document.getElementById('dash-pendentes').innerText = data.pendentes;
-            document.getElementById('dash-ticket').innerText = `R$ ${data.ticketMedio.toFixed(2)}`;
+            document.getElementById('dash-faturamento').innerText = `R$ ${faturamento.toFixed(2)}`;
+            document.getElementById('dash-pendentes').innerText = pendentes;
+            document.getElementById('dash-vendas-qtd').innerText = aprovados;
+            document.getElementById('dash-ticket').innerText = `R$ ${ticketMedio.toFixed(2)}`;
         }
 
-        // Renderiza Gráfico
+        // Tabela de Histórico
+        const tabelaHistorico = document.getElementById('tabela-historico');
+        if(tabelaHistorico) {
+            tabelaHistorico.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${todasVendas.slice(0, 50).map(v => { // Mostra as últimas 50
+                        const d = new Date(v.data);
+                        const dataStr = d.toLocaleDateString('pt-BR');
+                        let corStatus = '#ccc';
+                        if(v.status === 'Aprovado') corStatus = '#00ff88';
+                        if(v.status === 'Pendente') corStatus = '#ffaa00';
+                        if(v.status === 'Cancelado') corStatus = '#ff4444';
+                        
+                        return `
+                            <tr>
+                                <td style="color:#aaa;">${dataStr}</td>
+                                <td>${v.cliente}</td>
+                                <td><span class="status-badge" style="background:${corStatus}; color:#000;">${v.status}</span></td>
+                                <td style="color:#fff;">R$ ${parseFloat(v.total).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            `;
+        }
+
         renderizarGrafico(data.grafico.labels, data.grafico.valores);
 
         // Alerta de Estoque Baixo
@@ -103,20 +171,16 @@ async function carregarDashboard() {
         }
 
     } catch (error) {
-        console.error("Erro ao carregar dashboard:", error);
+        console.error("Erro dashboard:", error);
     }
 }
 
 function renderizarGrafico(labels, valores) {
     const ctxElement = document.getElementById('graficoVendas');
     if(!ctxElement) return;
-    
     const ctx = ctxElement.getContext('2d');
-    
-    // Se já existe um gráfico, destrói para criar o novo
     if (chartInstance) chartInstance.destroy();
 
-    // Formata datas YYYY-MM-DD para DD/MM
     const labelsFormatadas = labels.map(dataIso => {
         const parts = dataIso.split('-');
         return `${parts[2]}/${parts[1]}`;
@@ -129,11 +193,11 @@ function renderizarGrafico(labels, valores) {
             datasets: [{
                 label: 'Vendas (R$)',
                 data: valores,
-                borderColor: '#ff5e00', // Laranja Neon
+                borderColor: '#ff5e00',
                 backgroundColor: 'rgba(255, 94, 0, 0.1)',
                 borderWidth: 3,
                 fill: true,
-                tension: 0.4 // Curva suave
+                tension: 0.4 
             }]
         },
         options: {
@@ -149,15 +213,12 @@ function renderizarGrafico(labels, valores) {
 }
 
 // ==========================================
-// 2. GESTÃO DE PRODUTOS (SUA LÓGICA MANTIDA)
+// 2. GESTÃO DE PRODUTOS
 // ==========================================
-
-// Adiciona linha de variação (Global)
 window.adicionarLinhaVariacao = function(dados = {}) {
     const container = document.getElementById('container-variacoes');
     const div = document.createElement('div');
     div.className = 'variacao-row'; 
-
     div.innerHTML = `
         <div class="form-group" style="margin-bottom:5px;">
             <input type="text" placeholder="Opção (Ex: G, 42, Azul)" class="var-marca" value="${dados.marca || ''}" required>
@@ -177,7 +238,6 @@ window.adicionarLinhaVariacao = function(dados = {}) {
     container.appendChild(div);
 };
 
-// Preparar Edição (Global)
 window.prepararEdicao = function(id) {
     const produto = window.todosProdutos.find(p => p.id === id);
     if(produto) {
@@ -206,7 +266,6 @@ function iniciarEdicao(produto) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Cancelar Edição (Global)
 window.cancelarEdicao = function() {
     document.getElementById('form-produto').reset();
     document.getElementById('id-produto-editando').value = '';
@@ -219,7 +278,6 @@ window.cancelarEdicao = function() {
     document.getElementById('btn-cancelar').style.display = 'none';
 };
 
-// Listener do Formulário de Produtos (Salvar/Atualizar)
 const formProduto = document.getElementById('form-produto');
 if(formProduto) {
     formProduto.addEventListener('submit', async (e) => {
@@ -244,10 +302,11 @@ if(formProduto) {
         formData.append('variacoes', JSON.stringify(variacoes));
 
         try {
-            let url = '/api/produtos';
+            // 👇 Uso do API_URL
+            let url = `${API_URL}/api/produtos`;
             let method = 'POST';
             if(idEdicao) {
-                url = `/api/produtos/${idEdicao}`;
+                url = `${API_URL}/api/produtos/${idEdicao}`;
                 method = 'PUT';
             }
 
@@ -256,28 +315,27 @@ if(formProduto) {
                 alert(idEdicao ? "✅ Produto atualizado!" : "✅ Produto criado!");
                 cancelarEdicao();
                 carregarListaAdmin();
-                carregarDashboard(); // Atualiza dashboard pois estoque mudou
+                carregarDashboard(); 
             } else { alert("Erro ao salvar."); }
         } catch (error) { console.error(error); }
     });
 }
 
-// Deletar Produto (Global)
 window.deletarProduto = async function(id) {
     if(confirm("Tem certeza que deseja excluir?")) {
-        await fetch(`/api/produtos/${id}`, { method: 'DELETE' });
+        // 👇 Uso do API_URL
+        await fetch(`${API_URL}/api/produtos/${id}`, { method: 'DELETE' });
         carregarListaAdmin();
         carregarDashboard();
     }
 };
 
-// Listar Produtos
 async function carregarListaAdmin() {
     const container = document.getElementById('lista-produtos-admin');
     if(!container) return;
-    
     try {
-        const res = await fetch('/api/produtos');
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/produtos`);
         const produtos = await res.json();
         container.innerHTML = '';
         window.todosProdutos = produtos; 
@@ -324,7 +382,8 @@ async function carregarCupons() {
     const container = document.getElementById('lista-cupons');
     if(!container) return;
     try {
-        const res = await fetch('/api/cupons');
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/cupons`);
         const cupons = await res.json();
         container.innerHTML = '';
         cupons.forEach(c => {
@@ -343,7 +402,8 @@ if(formCupom) {
         e.preventDefault();
         const codigo = document.getElementById('codigo-cupom').value;
         const desconto = document.getElementById('valor-cupom').value;
-        await fetch('/api/cupons', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ codigo, desconto }) });
+        // 👇 Uso do API_URL
+        await fetch(`${API_URL}/api/cupons`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ codigo, desconto }) });
         alert("Cupom criado!");
         e.target.reset();
         carregarCupons();
@@ -351,95 +411,140 @@ if(formCupom) {
 }
 
 window.deletarCupom = async function(cod) {
-    if(confirm("Apagar cupom?")) { await fetch(`/api/cupons/${cod}`, { method: 'DELETE' }); carregarCupons(); }
+    // 👇 Uso do API_URL
+    if(confirm("Apagar cupom?")) { await fetch(`${API_URL}/api/cupons/${cod}`, { method: 'DELETE' }); carregarCupons(); }
 };
 
 // ==========================================
-// 4. GESTÃO DE PEDIDOS (RECUPERADA)
+// 4. GESTÃO DE PEDIDOS E APROVAÇÃO
 // ==========================================
+let todasAsVendasCache = []; // Guarda as vendas para filtragem local
+
 async function carregarVendas() {
     const container = document.getElementById('lista-vendas');
     if(!container) return;
     container.innerHTML = '<p style="color:#888">Buscando pedidos...</p>';
     
     try {
-        const res = await fetch('/api/vendas');
-        const vendas = await res.json();
-        container.innerHTML = '';
-        
-        if(vendas.length === 0) { container.innerHTML = '<p style="color:#666">Nenhuma venda registrada.</p>'; return; }
-        
-        vendas.forEach(v => {
-            const isPendente = v.status === 'Pendente';
-            const statusColor = isPendente ? '#ffaa00' : '#00ff88';
-            
-            // Botão de ação ou texto de concluído
-            const btnAcao = isPendente 
-                ? `<button onclick="confirmarVenda(${v.id_pedido})" style="background: rgba(0,255,136,0.1); color:#00ff88; border:1px solid #00ff88; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; width:100%; margin-top:10px;">✅ APROVAR E BAIXAR ESTOQUE</button>`
-                : `<div style="margin-top:10px; color:#666; font-size:0.9em; text-align:right;">Concluído</div>`;
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/vendas`);
+        todasAsVendasCache = await res.json();
+        renderizarListaVendas(todasAsVendasCache);
+    } catch (e) { 
+        console.error(e); 
+        container.innerHTML = '<p style="color:red">Erro ao carregar vendas. Verifique se o servidor está rodando na porta 3000.</p>';
+    }
+}
 
-            let itensHtml = v.itens.map(i => `<li style="margin-bottom:5px;">${i.qtd}x <span style="color:#fff">${i.produto}</span> <span style="color:#888">(${i.marca})</span></li>`).join('');
-            
-            // Formatar data se for ISO
-            let dataDisplay = v.data;
-            try {
-                if(v.data.includes('T')) {
-                    const d = new Date(v.data);
-                    dataDisplay = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR').slice(0,5);
-                }
-            } catch(e){}
+window.filtrarPedidos = function(filtro) {
+    const btns = document.querySelectorAll('.btn-filtro');
+    btns.forEach(b => b.style.opacity = '0.5');
+    event.target.style.opacity = '1';
 
-            container.innerHTML += `
-                <div class="card-item" style="border-left: 4px solid ${statusColor}; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 5px;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
-                        <div>
-                            <div style="font-size:1.1em; color:#fff; margin-bottom:5px;"><strong>PEDIDO #${v.id_pedido}</strong></div>
-                            <div style="color:#ddd; margin-bottom:5px;">Cliente: ${v.cliente}</div>
-                            <small style="color:#888;">📅 ${dataDisplay}</small>
-                            <ul style="margin:15px 0; padding-left:20px; color:#ccc;">${itensHtml}</ul>
-                            <div style="font-size:1.2em; color:#ffd700;">TOTAL: <b>R$ ${parseFloat(v.total).toFixed(2)}</b></div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="margin-bottom:10px; font-weight:bold; color:${statusColor};">${v.status.toUpperCase()}</div>
-                        </div>
+    if(filtro === 'todos') {
+        renderizarListaVendas(todasAsVendasCache);
+    } else {
+        const filtradas = todasAsVendasCache.filter(v => v.status === filtro);
+        renderizarListaVendas(filtradas);
+    }
+};
+
+function renderizarListaVendas(vendas) {
+    const container = document.getElementById('lista-vendas');
+    container.innerHTML = '';
+    
+    if(vendas.length === 0) { container.innerHTML = '<p style="color:#666">Nenhum pedido encontrado.</p>'; return; }
+    
+    vendas.forEach(v => {
+        const isPendente = v.status === 'Pendente';
+        const isCancelado = v.status === 'Cancelado';
+        
+        let statusColor = '#00ff88'; // Aprovado
+        if(isPendente) statusColor = '#ffaa00';
+        if(isCancelado) statusColor = '#ff4444';
+        
+        // Botões de ação
+        let botoesAcao = '';
+        if (isPendente) {
+            botoesAcao = `
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button onclick="confirmarVenda(${v.id_pedido})" style="flex:1; background: rgba(0,255,136,0.1); color:#00ff88; border:1px solid #00ff88; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅ APROVAR</button>
+                    <button onclick="cancelarVenda(${v.id_pedido})" style="flex:1; background: rgba(255,68,68,0.1); color:#ff4444; border:1px solid #ff4444; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">❌ RECUSAR</button>
+                </div>
+            `;
+        } else {
+            botoesAcao = `<div style="margin-top:10px; font-size:0.9em; text-align:right; color:${statusColor}; border-top:1px solid #333; padding-top:5px;">Status: ${v.status.toUpperCase()}</div>`;
+        }
+
+        let itensHtml = v.produtos ? v.produtos.map(i => `<li style="margin-bottom:5px;">${i.qtd || i.quantity}x <span style="color:#fff">${i.produto || i.name}</span> <span style="color:#888">(${i.marca || i.tamanho || 'U'})</span></li>`).join('') : '<li style="color:#666">Sem itens</li>';
+        
+        // Formatar data
+        let dataDisplay = v.data;
+        try {
+            if(v.data.includes('T')) {
+                const d = new Date(v.data);
+                dataDisplay = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR').slice(0,5);
+            }
+        } catch(e){}
+
+        container.innerHTML += `
+            <div class="card-item" style="border-left: 4px solid ${statusColor}; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 5px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                    <div style="flex-grow:1;">
+                        <div style="font-size:1.1em; color:#fff; margin-bottom:5px;"><strong>PEDIDO #${v.id_pedido}</strong></div>
+                        <div style="color:#ddd; margin-bottom:5px;">Cliente: <b>${v.cliente}</b></div>
+                        <small style="color:#888;">📅 ${dataDisplay}</small>
+                        <ul style="margin:15px 0; padding-left:20px; color:#ccc;">${itensHtml}</ul>
+                        <div style="font-size:1.2em; color:#ffd700;">TOTAL: <b>R$ ${parseFloat(v.total).toFixed(2)}</b></div>
                     </div>
-                    ${btnAcao}
-                </div>`;
-        });
-    } catch (e) { console.error(e); }
+                </div>
+                ${botoesAcao}
+            </div>`;
+    });
 }
 
 window.confirmarVenda = async function(id) {
-    if(!confirm("Isso irá baixar o estoque dos produtos. Confirmar aprovação?")) return;
+    if(!confirm("Aprovar pedido? Isso irá baixar o estoque.")) return;
     try {
-        const res = await fetch(`/api/venda/${id}/confirmar`, { method: 'POST' });
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/venda/${id}/confirmar`, { method: 'POST' });
         const data = await res.json();
         if(res.ok) { 
             alert("✅ Venda aprovada!");
             carregarVendas(); 
-            carregarDashboard(); // Atualiza gráficos
-            carregarListaAdmin(); // Atualiza lista de estoque se estiver visível
-        } 
-        else { alert("Erro: " + data.message); }
+            carregarDashboard();
+        } else { alert("Erro: " + data.message); }
+    } catch (e) { alert("Erro de conexão"); }
+};
+
+window.cancelarVenda = async function(id) {
+    if(!confirm("Tem certeza que deseja RECUSAR este pedido?")) return;
+    try {
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/venda/${id}/cancelar`, { method: 'POST' });
+        const data = await res.json();
+        if(res.ok) { 
+            alert("❌ Venda recusada/cancelada!");
+            carregarVendas(); 
+            carregarDashboard();
+        } else { alert("Erro: " + data.message); }
     } catch (e) { alert("Erro de conexão"); }
 };
 
 // ==========================================
-// 5. CONFIGURAÇÕES E BANNERS (ATUALIZADO)
+// 5. CONFIGURAÇÕES
 // ==========================================
-
 async function carregarConfiguracoesNoForm() {
     try {
-        const res = await fetch('/api/config');
+        // 👇 Uso do API_URL
+        const res = await fetch(`${API_URL}/api/config`);
         const config = await res.json();
 
-        // Campos Visuais
         if (document.getElementById('config-nome')) {
             if (config.nomeLoja) document.getElementById('config-nome').value = config.nomeLoja;
             if (config.corDestaque) document.getElementById('config-cor').value = config.corDestaque;
         }
 
-        // Campos Sociais
         if (document.getElementById('social-zap-pedidos')) {
             const zap = config.whatsapp || config.whatsappPedidos;
             if (zap) document.getElementById('social-zap-pedidos').value = zap;
@@ -447,9 +552,7 @@ async function carregarConfiguracoesNoForm() {
             if (config.instagramLink) document.getElementById('social-insta').value = config.instagramLink;
         }
         
-    } catch (error) {
-        console.error("Erro ao ler config:", error);
-    }
+    } catch (error) { console.error("Erro config:", error); }
 }
 
 async function salvarConfigGeneric(e) {
@@ -462,11 +565,11 @@ async function salvarConfigGeneric(e) {
     const formData = new FormData(e.target);
 
     try {
-        await fetch('/api/config', { method: 'POST', body: formData });
-        alert("✅ Configurações salvas com sucesso!");
+        // 👇 Uso do API_URL
+        await fetch(`${API_URL}/api/config`, { method: 'POST', body: formData });
+        alert("✅ Configurações salvas!");
     } catch (error) {
         alert("Erro ao salvar.");
-        console.error(error);
     } finally {
         btn.innerText = originalText;
         btn.disabled = false;

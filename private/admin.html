@@ -3,111 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QG do Bruxo | Painel</title>
+    <title>Painel de Gestão</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Russo+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         /* --- RESET E BASE --- */
         * { box-sizing: border-box; }
-        body {
-            font-family: 'Montserrat', sans-serif;
-            color: #e0e0e0; 
-            margin: 0;
-            background-color: #050505;
-            overflow-x: hidden;
-        }
+        body { font-family: 'Montserrat', sans-serif; color: #e0e0e0; margin: 0; background-color: #050505; overflow-x: hidden; }
 
-        /* --- LAYOUT DESKTOP PADRÃO --- */
+        /* --- LAYOUT --- */
         .admin-layout { display: flex; min-height: 100vh; }
 
         /* HEADER MOBILE */
-        .mobile-header {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%;
-            height: 60px;
-            background: #000;
-            border-bottom: 2px solid #ff5e00;
-            z-index: 2000;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            box-shadow: 0 5px 20px rgba(255, 94, 0, 0.2);
-        }
+        .mobile-header { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 60px; background: #000; border-bottom: 2px solid #ff5e00; z-index: 2000; align-items: center; justify-content: space-between; padding: 0 20px; box-shadow: 0 5px 20px rgba(255, 94, 0, 0.2); }
         .mobile-header h3 { color: #fff; margin: 0; font-size: 1.2rem; }
-        .btn-hamburger {
-            background: none; border: none; color: #ff5e00; font-size: 24px; cursor: pointer;
-        }
+        .btn-hamburger { background: none; border: none; color: #ff5e00; font-size: 24px; cursor: pointer; }
 
-        /* SIDEBAR / MENU */
-        .sidebar {
-            width: 260px;
-            background: #080808;
-            border-right: 1px solid #333;
-            padding: 20px;
-            display: flex; flex-direction: column;
-            position: fixed; top: 0; left: 0; height: 100vh;
-            z-index: 2100;
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .sidebar h2 {
-            font-size: 1.5rem; text-align: center; color: white; margin-bottom: 40px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-nav {
-            background: transparent; color: #888; border: none;
-            padding: 15px; text-align: left; font-size: 1rem; font-weight: bold;
-            cursor: pointer; border-radius: 8px; margin-bottom: 10px;
-            display: flex; align-items: center; gap: 12px;
-            width: 100%;
-        }
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: #080808; border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 2100; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar h2 { font-size: 1.5rem; text-align: center; color: white; margin-bottom: 40px; text-shadow: 0 0 10px rgba(255, 255, 255, 0.2); }
+        .btn-nav { background: transparent; color: #888; border: none; padding: 15px; text-align: left; font-size: 1rem; font-weight: bold; cursor: pointer; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; width: 100%; transition: 0.3s; }
         .btn-nav:hover, .btn-nav.ativo { background: #1a1a1a; color: #ff5e00; border-left: 3px solid #ff5e00; }
         .btn-sair { margin-top: auto; color: #ff4444; }
 
         /* OVERLAY */
-        .menu-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 2050;
-            display: none; backdrop-filter: blur(3px);
-        }
+        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2050; display: none; backdrop-filter: blur(3px); }
 
-        /* CONTEÚDO PRINCIPAL */
-        .content-area {
-            margin-left: 260px;
-            flex-grow: 1; padding: 40px; width: calc(100% - 260px);
-        }
+        /* CONTEÚDO */
+        .content-area { margin-left: 260px; flex-grow: 1; padding: 40px; width: calc(100% - 260px); }
 
-        /* --- ELEMENTOS DO PAINEL --- */
+        /* --- CARDS & FORMS --- */
         .card { background: #121212; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; color: #ff5e00; font-weight: bold; font-size: 0.9rem; }
-        
-        input, select {
-            width: 100%; padding: 12px; background: #000; border: 1px solid #444;
-            border-radius: 6px; color: white; outline: none; font-size: 16px; 
-        }
+        input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #444; border-radius: 6px; color: white; outline: none; font-size: 16px; }
         input:focus { border-color: #ff5e00; }
-
+        
         .btn-acao { width: 100%; padding: 15px; border-radius: 8px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; }
         .btn-salvar { background: #ff5e00; color: #000; transition: 0.3s; }
         .btn-salvar:hover { background: #cc4b00; }
         .btn-add { background: #222; color: #ff5e00; border: 1px solid #ff5e00; margin-top: 10px; }
         .btn-remove { background: #330000; color: red; border: 1px solid red; padding: 8px; width: 100%; margin-top: 5px; }
 
-        .variacao-row {
-            background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333;
-        }
-
+        .variacao-row { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #333; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; } 
-        .item-lista {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #000; padding: 15px; border-bottom: 1px solid #333;
-        }
+        
+        /* --- DASHBOARD WIDGETS --- */
+        .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .dash-card { background: #1a1a1a; padding: 20px; border-radius: 10px; border-top: 3px solid #333; display: flex; flex-direction: column; justify-content: space-between; }
+        .dash-card h4 { margin: 0; color: #888; font-size: 0.9rem; }
+        .dash-card .valor { font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 10px; }
+        .dash-card.destaque { border-color: #ff5e00; background: linear-gradient(180deg, #1a1a1a 0%, #251000 100%); }
+        .dash-card.destaque .valor { color: #ff5e00; }
 
-        /* --- MOBILE TOTAL --- */
+        /* --- PEDIDOS --- */
+        .card-item { border-left: 4px solid #333; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 5px; }
+        
+        /* Tabela de Vendas */
+        .vendas-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .vendas-table th, .vendas-table td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+        .vendas-table th { color: #888; font-size: 0.9em; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        
+        /* --- MOBILE --- */
         @media (max-width: 768px) {
             .mobile-header { display: flex; }
             .sidebar { transform: translateX(-100%); width: 80%; }
@@ -122,7 +82,7 @@
 <body>
 
     <header class="mobile-header">
-        <h3>PAINEL DO BRUXO</h3>
+        <h3>PAINEL DE GESTÃO</h3>
         <button class="btn-hamburger" onclick="toggleAdminMenu()">
             <i class="fas fa-bars"></i>
         </button>
@@ -133,19 +93,23 @@
     <div class="admin-layout">
         
         <aside class="sidebar" id="sidebarAdmin">
-            <h2>QG ADMIN</h2>
+            <h2>ADMIN</h2>
             <nav>
-                <button onclick="mostrarAba('produtos'); toggleAdminMenu()" class="btn-nav ativo" id="nav-produtos">
+                <button onclick="mostrarAba('dashboard'); toggleAdminMenu()" class="btn-nav ativo" id="nav-dashboard">
+                    <i class="fas fa-chart-line"></i> Dashboard & Relatórios
+                </button>
+                <button onclick="mostrarAba('pedidos'); toggleAdminMenu()" class="btn-nav" id="nav-pedidos">
+                    <i class="fas fa-clipboard-list"></i> Gestão de Pedidos
+                </button>
+                <button onclick="mostrarAba('produtos'); toggleAdminMenu()" class="btn-nav" id="nav-produtos">
                     <i class="fas fa-box"></i> Produtos
                 </button>
                 <button onclick="mostrarAba('config'); toggleAdminMenu()" class="btn-nav" id="nav-config">
-                    <i class="fas fa-paint-brush"></i> Aparência
+                    <i class="fas fa-paint-brush"></i> App & Banners
                 </button>
-                
                 <button onclick="mostrarAba('social'); toggleAdminMenu()" class="btn-nav" id="nav-social">
-                    <i class="fab fa-whatsapp"></i> Redes Sociais
+                    <i class="fab fa-whatsapp"></i> Contato
                 </button>
-
                 <button onclick="window.location.href='/'" class="btn-nav">
                     <i class="fas fa-home"></i> Ver Loja
                 </button>
@@ -157,7 +121,76 @@
 
         <main class="content-area">
             
-            <section id="aba-produtos">
+            <section id="aba-dashboard">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="color:#fff; margin:0;">VISÃO GERAL</h3>
+                    <select id="filtro-periodo" onchange="carregarDashboard()" style="width:auto; padding:5px 15px; background:#333; border:none;">
+                        <option value="hoje">Hoje</option>
+                        <option value="7dias" selected>Últimos 7 Dias</option>
+                        <option value="30dias">Últimos 30 Dias</option>
+                    </select>
+                </div>
+                
+                <div class="dash-grid">
+                    <div class="dash-card destaque">
+                        <h4>FATURAMENTO (PERÍODO)</h4>
+                        <span class="valor" id="dash-faturamento">R$ 0,00</span>
+                    </div>
+                    <div class="dash-card">
+                        <h4>PEDIDOS APROVADOS</h4>
+                        <span class="valor" id="dash-vendas-qtd" style="color:#00ff88">0</span>
+                    </div>
+                    <div class="dash-card">
+                        <h4>PENDENTES</h4>
+                        <span class="valor" id="dash-pendentes" style="color:#ffcc00">0</span>
+                    </div>
+                    <div class="dash-card">
+                        <h4>TICKET MÉDIO</h4>
+                        <span class="valor" id="dash-ticket">R$ 0,00</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h4 style="color:#fff; margin-top:0;">EVOLUÇÃO DE VENDAS</h4>
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="graficoVendas"></canvas>
+                    </div>
+                </div>
+
+                <div class="card" id="card-estoque-baixo" style="display:none;">
+                    <h4 style="color:#ff4444; margin-top:0;">⚠️ ESTOQUE CRÍTICO</h4>
+                    <div id="lista-estoque-baixo"></div>
+                </div>
+
+                <div class="card">
+                    <h4 style="color:#fff;">HISTÓRICO COMPLETO DE VENDAS</h4>
+                    <div class="table-container">
+                        <table class="vendas-table" id="tabela-historico">
+                            </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="aba-pedidos" style="display:none;">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="color:#fff; margin:0;">GERENCIAR PEDIDOS</h3>
+                        <button onclick="carregarVendas()" style="background:#333; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">🔄 Atualizar</button>
+                    </div>
+                    
+                    <div style="margin-bottom:20px; display:flex; gap:10px;">
+                        <button onclick="filtrarPedidos('todos')" class="btn-filtro" style="padding:5px 10px; background:#333; color:white; border:none; border-radius:4px; cursor:pointer;">Todos</button>
+                        <button onclick="filtrarPedidos('Pendente')" class="btn-filtro" style="padding:5px 10px; background:#ffaa00; color:black; border:none; border-radius:4px; cursor:pointer;">Pendentes</button>
+                        <button onclick="filtrarPedidos('Aprovado')" class="btn-filtro" style="padding:5px 10px; background:#00ff88; color:black; border:none; border-radius:4px; cursor:pointer;">Aprovados</button>
+                    </div>
+
+                    <div id="lista-vendas">
+                        <p style="color:#888">Carregando pedidos...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="aba-produtos" style="display: none;">
                 <div class="card">
                     <h3 style="margin-top:0; color:#fff;">NOVO PRODUTO</h3>
                     <form id="form-produto">
@@ -190,13 +223,22 @@
 
             <section id="aba-config" style="display: none;">
                 <div class="card">
-                    <h3 style="color:#fff;">PERSONALIZAR LOJA</h3>
-                    <p style="color:#888; font-size:0.9rem;">Mude o visual do site.</p>
+                    <h3 style="color:#fff;">APARÊNCIA & BANNERS</h3>
+                    <p style="color:#888; font-size:0.9rem;">Personalize o aplicativo do cliente.</p>
                     <form id="form-tema">
                         <div class="form-group"><label>Nome da Loja</label><input type="text" id="config-nome" name="nomeLoja"></div>
                         <div class="form-group"><label>Cor Principal</label><input type="color" id="config-cor" name="corDestaque" style="height:50px; cursor:pointer;"></div>
+                        
+                        <div style="background:#1a1a1a; padding:15px; border-radius:8px; margin-bottom:15px;">
+                            <label>Carrossel de Destaques (Topo)</label>
+                            <small style="color:#ccc; display:block; margin-bottom:10px;">Envie até 3 imagens.</small>
+                            <div class="form-group"><input type="file" name="banner1" accept="image/*"></div>
+                            <div class="form-group"><input type="file" name="banner2" accept="image/*"></div>
+                            <div class="form-group"><input type="file" name="banner3" accept="image/*"></div>
+                        </div>
+
                         <div class="form-group"><label>Fundo do Site</label><input type="file" name="fundoSite" accept="image/*"></div>
-                        <div class="form-group"><label>Banner Topo</label><input type="file" name="fundoHeader" accept="image/*"></div>
+                        <div class="form-group"><label>Banner Topo (Fixo)</label><input type="file" name="fundoHeader" accept="image/*"></div>
                         <button type="submit" class="btn-acao btn-salvar">SALVAR APARÊNCIA</button>
                     </form>
                 </div>
@@ -205,25 +247,19 @@
             <section id="aba-social" style="display: none;">
                 <div class="card">
                     <h3 style="color:#fff;">REDES SOCIAIS & CONTATO</h3>
-                    <p style="color:#888; font-size:0.9rem;">Configure os links de contato.</p>
-                    
                     <form id="form-social">
                         <div class="form-group">
-                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp PEDIDOS (Principal)</label>
+                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp PEDIDOS</label>
                             <input type="text" id="social-zap-pedidos" name="whatsapp" placeholder="Ex: 5583999999999">
-                            <small style="color:#666">Digite apenas números (DDD + Numero). Ex: 5511999998888</small>
                         </div>
-
                         <div class="form-group">
-                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp Suporte (Opcional)</label>
+                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp Suporte</label>
                             <input type="text" id="social-zap-float" name="whatsappFlutuante" placeholder="Ex: 5583999999999">
                         </div>
-
                         <div class="form-group">
-                            <label><i class="fab fa-instagram" style="color:#e1306c;"></i> Link do Instagram</label>
-                            <input type="text" id="social-insta" name="instagramLink" placeholder="https://instagram.com/seu_perfil">
+                            <label><i class="fab fa-instagram" style="color:#e1306c;"></i> Link Instagram</label>
+                            <input type="text" id="social-insta" name="instagramLink">
                         </div>
-
                         <button type="submit" class="btn-acao btn-salvar">SALVAR CONTATOS</button>
                     </form>
                 </div>
@@ -231,109 +267,6 @@
 
         </main>
     </div>
-
-    <script>
-        // --- FUNÇÕES DE LAYOUT ---
-        function toggleAdminMenu() {
-            const sidebar = document.getElementById('sidebarAdmin');
-            const overlay = document.getElementById('overlayAdmin');
-            if (window.innerWidth <= 768) {
-                if (sidebar.classList.contains('aberto')) {
-                    sidebar.classList.remove('aberto');
-                    overlay.classList.remove('aberto');
-                } else {
-                    sidebar.classList.add('aberto');
-                    overlay.classList.add('aberto');
-                }
-            }
-        }
-
-        function mostrarAba(abaId) {
-            // Esconde todas
-            document.getElementById('aba-produtos').style.display = 'none';
-            document.getElementById('aba-config').style.display = 'none';
-            document.getElementById('aba-social').style.display = 'none';
-            
-            // Tira classe 'ativo' dos botões
-            document.querySelectorAll('.btn-nav').forEach(btn => btn.classList.remove('ativo'));
-
-            // Mostra a certa
-            document.getElementById('aba-' + abaId).style.display = 'block';
-            
-            // Adiciona classe ativo no botão certo (opcional, requer IDs nos botões)
-            if(document.getElementById('nav-' + abaId)) {
-                document.getElementById('nav-' + abaId).classList.add('ativo');
-            }
-        }
-
-        function logout() {
-            // Aqui você pode adicionar lógica para limpar sessão se houver
-            window.location.href = '/login.html';
-        }
-
-        // --- LÓGICA DE CONFIGURAÇÃO (O QUE CONSERTA O ZAP) ---
-        
-        // Função genérica para salvar formulários de configuração
-        async function salvarConfiguracao(event, formId) {
-            event.preventDefault();
-            const form = document.getElementById(formId);
-            const formData = new FormData(form); // Pega arquivos e textos
-
-            try {
-                // Envia para o backend corrigido (/api/config)
-                const response = await fetch('/api/config', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    alert('Configurações salvas com sucesso!');
-                    // Opcional: Recarregar dados para confirmar visualmente
-                    carregarDadosConfig(); 
-                } else {
-                    alert('Erro ao salvar. Tente novamente.');
-                }
-            } catch (error) {
-                console.error(error);
-                alert('Erro de conexão.');
-            }
-        }
-
-        // Função para carregar os dados atuais nos inputs
-        async function carregarDadosConfig() {
-            try {
-                const res = await fetch('/api/config');
-                const config = await res.json();
-
-                // Preencher campos se existirem
-                if(config.nomeLoja) document.getElementById('config-nome').value = config.nomeLoja;
-                if(config.corDestaque) document.getElementById('config-cor').value = config.corDestaque;
-                
-                // Preencher Social (O IMPORTANTE)
-                if(config.whatsapp) document.getElementById('social-zap-pedidos').value = config.whatsapp;
-                if(config.whatsappFlutuante) document.getElementById('social-zap-float').value = config.whatsappFlutuante;
-                if(config.instagramLink) document.getElementById('social-insta').value = config.instagramLink;
-
-            } catch (error) {
-                console.error("Erro ao carregar configs:", error);
-            }
-        }
-
-        // --- INICIALIZAÇÃO ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Liga os eventos de submit dos formulários de config e social
-            document.getElementById('form-tema').addEventListener('submit', (e) => salvarConfiguracao(e, 'form-tema'));
-            document.getElementById('form-social').addEventListener('submit', (e) => salvarConfiguracao(e, 'form-social'));
-            
-            // Carrega os valores atuais
-            carregarDadosConfig();
-            
-            // AQUI VOCÊ DEVE MANTER O RESTO DO SEU JS DE PRODUTOS/CUPONS
-            // Se você usa o /js/admin.js para produtos, mantenha a tag script abaixo.
-            // Se a lógica de produtos estiver faltando, me avise que eu crio.
-        });
-
-    </script>
 
     <script src="/js/admin.js"></script>
 </body>
