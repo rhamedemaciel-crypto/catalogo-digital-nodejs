@@ -1,1 +1,108 @@
-[]
+[
+  {
+    "id": 1715431200001,
+    "nome": "Smartphone X-Pro 256GB",
+    "categoria": "Eletrônicos",
+    "imagem": "https://placehold.co/400x400/1a1a1a/white?text=Smartphone+X",
+    "descricao": "O melhor smartphone do mercado com câmera de 108MP e bateria de longa duração.",
+    "ativo": true,
+    "preco": 1499.90,
+    "variacoes": [
+      { "marca": "Preto Matte", "preco": 1499.90, "estoque": 10 },
+      { "marca": "Branco Pérola", "preco": 1549.90, "estoque": 5 }
+    ]
+  },
+  {
+    "id": 1715431200002,
+    "nome": "Fone Bluetooth Noise Cancelling",
+    "categoria": "Acessórios",
+    "imagem": "https://placehold.co/400x400/333/00ff88?text=Fone+Bluetooth",
+    "descricao": "Isolamento acústico ativo e som de alta fidelidade para seus treinos.",
+    "ativo": true,
+    "preco": 299.00,
+    "variacoes": [
+      { "marca": "Padrão", "preco": 299.00, "estoque": 20 }
+    ]
+  },
+  {
+    "id": 1715431200003,
+    "nome": "Camiseta Tech Dry-Fit",
+    "categoria": "Vestuário",
+    "imagem": "https://placehold.co/400x400/0044cc/white?text=Camiseta+Tech",
+    "descricao": "Tecido respirável ideal para esportes e uso casual em dias quentes.",
+    "ativo": true,
+    "preco": 89.90,
+    "variacoes": [
+      { "marca": "P", "preco": 89.90, "estoque": 15 },
+      { "marca": "M", "preco": 89.90, "estoque": 12 },
+      { "marca": "G", "preco": 95.90, "estoque": 8 }
+    ]
+  },
+  {
+    "id": 1715431200004,
+    "nome": "Smartwatch Fitness V2",
+    "categoria": "Eletrônicos",
+    "imagem": "https://placehold.co/400x400/ff6600/white?text=Smartwatch",
+    "descricao": "Monitora batimentos, passos e sono. Resistente à água IP68.",
+    "ativo": true,
+    "preco": 199.50,
+    "variacoes": [
+      { "marca": "Pulseira Preta", "preco": 199.50, "estoque": 30 },
+      { "marca": "Pulseira Rosa", "preco": 199.50, "estoque": 15 }
+    ]
+  },
+  {
+    "id": 1715431200005,
+    "nome": "Tênis Running Speed",
+    "categoria": "Calçados",
+    "imagem": "https://placehold.co/400x400/555/yellow?text=Tenis+Speed",
+    "descricao": "Amortecimento avançado para corridas de longa distância.",
+    "ativo": true,
+    "preco": 349.90,
+    "variacoes": [
+      { "marca": "39", "preco": 349.90, "estoque": 4 },
+      { "marca": "40", "preco": 349.90, "estoque": 6 },
+      { "marca": "41", "preco": 349.90, "estoque": 5 },
+      { "marca": "42", "preco": 369.90, "estoque": 2 }
+    ]
+  },
+  {
+    "id": 1715431200006,
+    "nome": "Kit Gamer Teclado + Mouse",
+    "categoria": "Eletrônicos",
+    "imagem": "https://placehold.co/400x400/111/ff0000?text=Kit+Gamer",
+    "descricao": "Teclado mecânico RGB e mouse com 6400 DPI ajustável.",
+    "ativo": true,
+    "preco": 249.00,
+    "variacoes": [
+      { "marca": "Switch Blue", "preco": 249.00, "estoque": 8 },
+      { "marca": "Switch Red", "preco": 269.00, "estoque": 5 }
+    ]
+  },
+  {
+    "id": 1715431200007,
+    "nome": "Garrafa Térmica Inox 1L",
+    "categoria": "Acessórios",
+    "imagem": "https://placehold.co/400x400/ccc/black?text=Garrafa+1L",
+    "descricao": "Mantém gelado por 24h e quente por 12h.",
+    "ativo": true,
+    "preco": 75.00,
+    "variacoes": [
+      { "marca": "Preto Fosco", "preco": 75.00, "estoque": 50 },
+      { "marca": "Prata", "preco": 70.00, "estoque": 20 }
+    ]
+  },
+  {
+    "id": 1715431200008,
+    "nome": "Mochila Executiva Impermeável",
+    "categoria": "Acessórios",
+    "imagem": "https://placehold.co/400x400/222/white?text=Mochila",
+    "descricao": "Compartimento para notebook de até 15 polegadas e saída USB.",
+    "ativo": true,
+    "preco": 129.90,
+    "variacoes": [
+      { "marca": "Cinza", "preco": 129.90, "estoque": 10 },
+      { "marca": "Preta", "preco": 129.90, "estoque": 10 }
+    ]
+  }
+]
