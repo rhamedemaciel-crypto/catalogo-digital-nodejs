@@ -1,87 +1,111 @@
 // ==========================================
-// 0. INICIALIZAÇÃO & NAVEGAÇÃO
+// 0. CONFIGURAÇÕES & NAVEGAÇÃO
 // ==========================================
+const API_URL = ""; 
 
-// 🔥 CORREÇÃO PRINCIPAL: Endereço fixo do Servidor
-const API_URL = "http://localhost:3000";
+// 🔥 CORREÇÃO: Definimos a função ANTES do carregamento da página
+window.openTab = function(aba) {
+    console.log("Navegando para:", aba);
 
-document.addEventListener('DOMContentLoaded', () => {
-    carregarDashboard(); 
-    adicionarLinhaVariacao(); 
-    carregarListaAdmin();
-    carregarCupons();
-    carregarVendas();
-    carregarConfiguracoesNoForm();
+    // 1. Esconde todas as seções
+    const secoes = document.querySelectorAll('section, .tab-content');
+    secoes.forEach(s => s.style.display = 'none');
+
+    // 2. Remove classe ativo dos botões
+    const botoes = document.querySelectorAll('.btn-nav');
+    botoes.forEach(b => b.classList.remove('ativo'));
+
+    // 3. Mostra a aba certa
+    let abaAlvo = document.getElementById(aba);
+    if (!abaAlvo) abaAlvo = document.getElementById('aba-' + aba);
     
-    const formTema = document.getElementById('form-tema');
-    if (formTema) formTema.addEventListener('submit', salvarConfigGeneric);
+    if (abaAlvo) {
+        abaAlvo.style.display = 'block';
+        abaAlvo.classList.add('active'); 
+    }
 
-    const formSocial = document.getElementById('form-social');
-    if (formSocial) formSocial.addEventListener('submit', salvarConfigGeneric);
-});
+    // 4. Ativa o botão no menu
+    const btnAlvo = document.getElementById('nav-' + aba) || document.querySelector(`button[onclick*="'${aba}'"]`);
+    if(btnAlvo) btnAlvo.classList.add('ativo');
+
+    // 5. Carrega dados específicos (Com proteção de erro)
+    try {
+        if (aba === 'dashboard') carregarDashboard();
+        if (aba === 'pedidos') carregarVendas();
+        if (aba === 'produtos') carregarListaAdmin();
+        if (aba === 'revendedores') carregarRevendedores();
+        if (aba === 'config' || aba === 'social') carregarConfiguracoesNoForm();
+    } catch (e) {
+        console.error("Erro ao carregar aba:", e);
+    }
+};
+
+window.mostrarAba = window.openTab;
+
+window.logout = function() {
+    window.location.href = '/logout';
+};
 
 window.toggleAdminMenu = function() {
     const sidebar = document.getElementById('sidebarAdmin');
     const overlay = document.getElementById('overlayAdmin');
-    if (window.innerWidth <= 768) {
-        if (sidebar.classList.contains('aberto')) {
-            sidebar.classList.remove('aberto');
-            overlay.classList.remove('aberto');
-        } else {
-            sidebar.classList.add('aberto');
-            overlay.classList.add('aberto');
-        }
-    }
-};
-
-window.mostrarAba = function(aba) {
-    ['dashboard', 'pedidos', 'produtos', 'config', 'social'].forEach(id => {
-        const el = document.getElementById('aba-' + id);
-        if(el) el.style.display = 'none';
-        
-        const btn = document.getElementById('nav-' + id);
-        if(btn) btn.classList.remove('ativo');
-    });
-
-    const abaAlvo = document.getElementById('aba-' + aba);
-    if(abaAlvo) abaAlvo.style.display = 'block';
-    
-    const btnAlvo = document.getElementById('nav-' + aba);
-    if(btnAlvo) btnAlvo.classList.add('ativo');
-
-    if (aba === 'dashboard') carregarDashboard();
-    if (aba === 'pedidos') carregarVendas();
-    if (aba === 'produtos') carregarListaAdmin();
-    if (aba === 'config' || aba === 'social') carregarConfiguracoesNoForm();
-};
-
-window.logout = function() {
-    window.location.href = '/login.html';
+    if (sidebar) sidebar.classList.toggle('aberto');
+    if (overlay) overlay.classList.toggle('aberto');
 };
 
 // ==========================================
-// 1. DASHBOARD & RELATÓRIOS FINANCEIROS
+// 1. INICIALIZAÇÃO
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Admin JS Iniciado com sucesso ✅");
+
+    try { carregarDashboard(); } catch(e) { console.warn("Dash offline no inicio", e); }
+    
+    // Inicializa a primeira linha de variação visual
+    const containerVars = document.getElementById('container-variacoes');
+    if (containerVars) adicionarLinhaVariacao();
+
+    carregarVendas();
+    carregarListaAdmin();
+    carregarCupons();
+    
+    const addListener = (id, func) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('submit', func);
+    };
+
+    addListener('form-tema', salvarConfigGeneric);
+    addListener('form-social', salvarConfigGeneric);
+    addListener('form-config', salvarConfigGeneric);
+    addListener('form-produto', salvarProduto);
+    addListener('form-cupom', salvarCupom);
+    addListener('form-revendedor', salvarRevendedor);
+
+    openTab('dashboard');
+});
+
+// ==========================================
+// 2. DASHBOARD & RELATÓRIOS
 // ==========================================
 let chartInstance = null; 
 
 async function carregarDashboard() {
     try {
-        const periodo = document.getElementById('filtro-periodo').value || '7dias';
+        const elPeriodo = document.getElementById('filtro-periodo');
+        const periodo = elPeriodo ? elPeriodo.value : '7dias';
         
-        // 👇 Uso do API_URL
-        const res = await fetch(`${API_URL}/api/dashboard`);
-        const data = await res.json(); 
+        const res = await fetch(`${API_URL}/api/vendas`);
+        const todasVendas = await res.json();
         
-        const todasVendasRes = await fetch(`${API_URL}/api/vendas`);
-        const todasVendas = await todasVendasRes.json();
-        
+        const resDash = await fetch(`${API_URL}/api/dashboard`);
+        const dataDash = await resDash.json();
+
         const hoje = new Date();
         let faturamento = 0;
         let pendentes = 0;
         let aprovados = 0;
         let ticketSoma = 0;
         
-        // Filtro de data
         const vendasFiltradas = todasVendas.filter(v => {
             if (v.status === 'Pendente') pendentes++; 
             if (v.status !== 'Aprovado') return false;
@@ -96,7 +120,6 @@ async function carregarDashboard() {
             return true;
         });
 
-        // Calcular Totais
         vendasFiltradas.forEach(v => {
             const val = parseFloat(v.total) || 0;
             faturamento += val;
@@ -106,67 +129,31 @@ async function carregarDashboard() {
 
         const ticketMedio = aprovados > 0 ? ticketSoma / aprovados : 0;
 
-        // Atualizar Cards
-        if(document.getElementById('dash-faturamento')) {
-            document.getElementById('dash-faturamento').innerText = `R$ ${faturamento.toFixed(2)}`;
-            document.getElementById('dash-pendentes').innerText = pendentes;
-            document.getElementById('dash-vendas-qtd').innerText = aprovados;
-            document.getElementById('dash-ticket').innerText = `R$ ${ticketMedio.toFixed(2)}`;
-        }
+        const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+        
+        setTxt('dash-faturamento', new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamento));
+        setTxt('dash-pendentes', pendentes);
+        setTxt('dash-vendas-qtd', aprovados);
+        setTxt('dash-ticket', new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ticketMedio));
 
-        // Tabela de Histórico
-        const tabelaHistorico = document.getElementById('tabela-historico');
-        if(tabelaHistorico) {
-            tabelaHistorico.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Cliente</th>
-                        <th>Status</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${todasVendas.slice(0, 50).map(v => { // Mostra as últimas 50
-                        const d = new Date(v.data);
-                        const dataStr = d.toLocaleDateString('pt-BR');
-                        let corStatus = '#ccc';
-                        if(v.status === 'Aprovado') corStatus = '#00ff88';
-                        if(v.status === 'Pendente') corStatus = '#ffaa00';
-                        if(v.status === 'Cancelado') corStatus = '#ff4444';
-                        
-                        return `
-                            <tr>
-                                <td style="color:#aaa;">${dataStr}</td>
-                                <td>${v.cliente}</td>
-                                <td><span class="status-badge" style="background:${corStatus}; color:#000;">${v.status}</span></td>
-                                <td style="color:#fff;">R$ ${parseFloat(v.total).toFixed(2)}</td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            `;
-        }
-
-        renderizarGrafico(data.grafico.labels, data.grafico.valores);
+        if(dataDash.grafico) renderizarGrafico(dataDash.grafico.labels, dataDash.grafico.valores);
 
         // Alerta de Estoque Baixo
         const divEstoque = document.getElementById('card-estoque-baixo');
         const listaEstoque = document.getElementById('lista-estoque-baixo');
         
-        if (divEstoque && listaEstoque) {
-            if (data.estoqueBaixo.length > 0) {
-                divEstoque.style.display = 'block';
-                listaEstoque.innerHTML = '';
-                data.estoqueBaixo.forEach(item => {
+        if (listaEstoque && dataDash.estoqueBaixo) {
+            listaEstoque.innerHTML = '';
+            if (dataDash.estoqueBaixo.length > 0) {
+                if(divEstoque) divEstoque.style.display = 'block';
+                dataDash.estoqueBaixo.forEach(item => {
                     listaEstoque.innerHTML += `
-                        <div style="background:#330000; color:#ffaaaa; padding:10px; margin-bottom:5px; border-left:3px solid red; border-radius:4px;">
-                            <b>${item.nome}</b> (${item.marca}) — Restam: <b>${item.estoque}</b>
-                        </div>
-                    `;
+                        <div style="background:#330000; color:#ffaaaa; padding:8px; margin-bottom:5px; border-left:3px solid red; border-radius:4px; font-size:0.9em;">
+                            <b>${item.nome}</b> (${item.marca}): ${item.estoque} un.
+                        </div>`;
                 });
             } else {
-                divEstoque.style.display = 'none';
+                listaEstoque.innerHTML = '<p style="color:#00ff88; padding:5px;">Estoque saudável! ✅</p>';
             }
         }
 
@@ -178,24 +165,22 @@ async function carregarDashboard() {
 function renderizarGrafico(labels, valores) {
     const ctxElement = document.getElementById('graficoVendas');
     if(!ctxElement) return;
+    
     const ctx = ctxElement.getContext('2d');
     if (chartInstance) chartInstance.destroy();
 
-    const labelsFormatadas = labels.map(dataIso => {
-        const parts = dataIso.split('-');
-        return `${parts[2]}/${parts[1]}`;
-    });
+    const labelsFmt = labels.map(d => d.split('-').slice(1).reverse().join('/'));
 
     chartInstance = new Chart(ctx, {
         type: 'line', 
         data: {
-            labels: labelsFormatadas,
+            labels: labelsFmt,
             datasets: [{
                 label: 'Vendas (R$)',
                 data: valores,
                 borderColor: '#ff5e00',
                 backgroundColor: 'rgba(255, 94, 0, 0.1)',
-                borderWidth: 3,
+                borderWidth: 2,
                 fill: true,
                 tension: 0.4 
             }]
@@ -205,125 +190,151 @@ function renderizarGrafico(labels, valores) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } }, 
             scales: {
-                y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } },
-                x: { grid: { display: false }, ticks: { color: '#888' } }
+                y: { beginAtZero: true, grid: { color: '#222' }, ticks: { color: '#666' } },
+                x: { grid: { display: false }, ticks: { color: '#666' } }
             }
         }
     });
 }
 
 // ==========================================
-// 2. GESTÃO DE PRODUTOS
+// 3. PRODUTOS & VARIAÇÕES (COM BLOCOS VISUAIS)
 // ==========================================
+
+// Função que CRIA os blocos na tela (O "Jeito Antigo" Restaurado)
 window.adicionarLinhaVariacao = function(dados = {}) {
     const container = document.getElementById('container-variacoes');
+    if (!container) return; 
+
     const div = document.createElement('div');
     div.className = 'variacao-row'; 
+    // Estilo inline para garantir aparência de bloco separado
+    div.style.cssText = "background: #1a1a1a; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #333;";
+    
     div.innerHTML = `
-        <div class="form-group" style="margin-bottom:5px;">
-            <input type="text" placeholder="Opção (Ex: G, 42, Azul)" class="var-marca" value="${dados.marca || ''}" required>
+        <div class="form-group" style="margin-bottom:10px;">
+            <label style="font-size:0.8em; color:#888;">Descrição da Opção (Marca/Tamanho)</label>
+            <input type="text" placeholder="Ex: Tamanho G, Azul, 110v" class="var-marca" value="${dados.marca || dados.tamanho || ''}" required style="width:100%; padding:10px; background:#000; border:1px solid #444; color:white; border-radius:4px;">
         </div>
         <div style="display:flex; gap:10px;">
             <div style="flex:1;">
-                <input type="number" placeholder="Preço R$" class="var-preco" value="${dados.preco_venda || ''}" step="0.01" required>
+                <label style="font-size:0.8em; color:#888;">Preço (R$)</label>
+                <input type="number" placeholder="0.00" class="var-preco" value="${dados.preco_venda || dados.preco || ''}" step="0.01" required style="width:100%; padding:10px; background:#000; border:1px solid #444; color:white; border-radius:4px;">
             </div>
             <div style="flex:1;">
-                <input type="number" placeholder="Qtd" class="var-estoque" value="${dados.estoque || ''}" required>
+                <label style="font-size:0.8em; color:#888;">Estoque (Qtd)</label>
+                <input type="number" placeholder="0" class="var-estoque" value="${dados.estoque !== undefined ? dados.estoque : ''}" required style="width:100%; padding:10px; background:#000; border:1px solid #444; color:white; border-radius:4px;">
             </div>
         </div>
-        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">
-            <i class="fas fa-trash"></i> REMOVER
+        <button type="button" class="btn-remove" onclick="this.parentElement.remove()" style="margin-top:10px; width:100%; border:1px solid #ff4444; background:transparent; color:#ff4444; padding:8px; border-radius:4px; cursor:pointer; font-weight:bold;">
+            <i class="fas fa-trash"></i> Remover esta Opção
         </button>
     `;
     container.appendChild(div);
 };
 
+async function salvarProduto(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const idEdicao = document.getElementById('id-produto-editando').value;
+
+    // 1. Varre os blocos visuais e monta o array
+    const variacoes = [];
+    document.querySelectorAll('.variacao-row').forEach(row => {
+        variacoes.push({
+            marca: row.querySelector('.var-marca').value,
+            preco: parseFloat(row.querySelector('.var-preco').value) || 0,
+            estoque: parseInt(row.querySelector('.var-estoque').value) || 0
+        });
+    });
+
+    // 2. Coloca o array convertido em String no FormData para o backend ler
+    if (variacoes.length > 0) {
+        formData.set('variacoes', JSON.stringify(variacoes));
+    } else {
+        // Se não tiver blocos, tenta limpar ou usar fallback
+        formData.set('variacoes', '[]');
+    }
+
+    try {
+        let url = `${API_URL}/api/produtos`;
+        let method = 'POST';
+        if(idEdicao) {
+            url += `/${idEdicao}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, { method, body: formData });
+        if(res.ok) {
+            alert('Produto salvo com sucesso!');
+            cancelarEdicao();
+            carregarListaAdmin();
+        } else {
+            const err = await res.json();
+            alert('Erro: ' + (err.error || err.message));
+        }
+    } catch(e) { console.error(e); alert('Erro de conexão ao salvar produto'); }
+}
+
 window.prepararEdicao = function(id) {
-    const produto = window.todosProdutos.find(p => p.id === id);
+    const produto = window.todosProdutos?.find(p => p.id == id || p._id == id);
     if(produto) {
         iniciarEdicao(produto);
-        mostrarAba('produtos');
+        openTab('produtos');
     }
 };
 
 function iniciarEdicao(produto) {
-    document.getElementById('id-produto-editando').value = produto.id;
-    document.querySelector('input[name="nome"]').value = produto.nome;
-    document.querySelector('input[name="categoria"]').value = produto.categoria;
-    
-    document.getElementById('container-variacoes').innerHTML = '';
-    if (produto.variacoes && produto.variacoes.length > 0) {
-        produto.variacoes.forEach(v => adicionarLinhaVariacao(v));
-    } else {
-        adicionarLinhaVariacao();
+    const form = document.getElementById('form-produto');
+    if(!form) return;
+
+    document.getElementById('id-produto-editando').value = produto._id || produto.id;
+    if(form.nome) form.nome.value = produto.nome;
+    if(form.categoria) form.categoria.value = produto.categoria;
+    if(form.preco) form.preco.value = produto.preco;
+
+    // Limpa e recria os blocos visuais
+    const container = document.getElementById('container-variacoes');
+    if(container) {
+        container.innerHTML = '';
+        if(produto.variacoes && Array.isArray(produto.variacoes) && produto.variacoes.length > 0) {
+            produto.variacoes.forEach(v => adicionarLinhaVariacao(v));
+        } else {
+            adicionarLinhaVariacao(); // Adiciona um vazio se não tiver nada
+        }
     }
 
-    const btnSubmit = document.getElementById('btn-submit');
-    btnSubmit.innerText = "🔄 ATUALIZAR PRODUTO";
-    btnSubmit.style.background = "linear-gradient(45deg, #9d00ff, #7a00cc)"; 
-    document.getElementById('btn-cancelar').style.display = 'block';
+    const btn = form.querySelector('button[type="submit"]');
+    if(btn) { btn.innerText = "ATUALIZAR PRODUTO"; btn.style.background = "#9d00ff"; }
     
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const btnCancel = document.getElementById('btn-cancelar');
+    if(btnCancel) btnCancel.style.display = 'block';
+    
+    form.scrollIntoView({ behavior: 'smooth' });
 }
 
 window.cancelarEdicao = function() {
-    document.getElementById('form-produto').reset();
+    const form = document.getElementById('form-produto');
+    if(!form) return;
+    form.reset();
     document.getElementById('id-produto-editando').value = '';
-    document.getElementById('container-variacoes').innerHTML = '';
-    adicionarLinhaVariacao(); 
     
-    const btnSubmit = document.getElementById('btn-submit');
-    btnSubmit.innerText = "💾 SALVAR PRODUTO";
-    btnSubmit.style.background = ""; 
-    document.getElementById('btn-cancelar').style.display = 'none';
+    const container = document.getElementById('container-variacoes');
+    if(container) { 
+        container.innerHTML = ''; 
+        adicionarLinhaVariacao(); // Volta para o estado inicial (1 linha vazia)
+    }
+
+    const btn = form.querySelector('button[type="submit"]');
+    if(btn) { btn.innerText = "SALVAR PRODUTO"; btn.style.background = ""; }
+    
+    const btnCancel = document.getElementById('btn-cancelar');
+    if(btnCancel) btnCancel.style.display = 'none';
 };
 
-const formProduto = document.getElementById('form-produto');
-if(formProduto) {
-    formProduto.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const formData = new FormData();
-        const idEdicao = document.getElementById('id-produto-editando').value;
-
-        formData.append('nome', form.nome.value);
-        formData.append('categoria', form.categoria.value);
-        if(form.imagem.files[0]) formData.append('imagem', form.imagem.files[0]);
-
-        const variacoes = [];
-        document.querySelectorAll('.variacao-row').forEach(linha => {
-            variacoes.push({
-                marca: linha.querySelector('.var-marca').value,
-                preco_venda: parseFloat(linha.querySelector('.var-preco').value) || 0,
-                estoque: parseInt(linha.querySelector('.var-estoque').value) || 0
-            });
-        });
-
-        formData.append('variacoes', JSON.stringify(variacoes));
-
-        try {
-            // 👇 Uso do API_URL
-            let url = `${API_URL}/api/produtos`;
-            let method = 'POST';
-            if(idEdicao) {
-                url = `${API_URL}/api/produtos/${idEdicao}`;
-                method = 'PUT';
-            }
-
-            const res = await fetch(url, { method: method, body: formData });
-            if (res.ok) {
-                alert(idEdicao ? "✅ Produto atualizado!" : "✅ Produto criado!");
-                cancelarEdicao();
-                carregarListaAdmin();
-                carregarDashboard(); 
-            } else { alert("Erro ao salvar."); }
-        } catch (error) { console.error(error); }
-    });
-}
-
 window.deletarProduto = async function(id) {
-    if(confirm("Tem certeza que deseja excluir?")) {
-        // 👇 Uso do API_URL
+    if(confirm('Excluir produto permanentemente?')) {
         await fetch(`${API_URL}/api/produtos/${id}`, { method: 'DELETE' });
         carregarListaAdmin();
         carregarDashboard();
@@ -334,244 +345,239 @@ async function carregarListaAdmin() {
     const container = document.getElementById('lista-produtos-admin');
     if(!container) return;
     try {
-        // 👇 Uso do API_URL
         const res = await fetch(`${API_URL}/api/produtos`);
         const produtos = await res.json();
-        container.innerHTML = '';
         window.todosProdutos = produtos; 
 
-        produtos.forEach(p => {
-            let htmlVars = '<div style="margin-top:10px; font-size:13px; color:#aaa;">';
-            if(p.variacoes){
-                p.variacoes.forEach((v) => {
-                    htmlVars += `
-                        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding:4px 0;">
-                            <span>${v.marca} (Est: <b style="color:${v.estoque < 5 ? 'red' : '#fff'}">${v.estoque}</b>) - R$ ${v.preco_venda}</span>
-                        </div>`;
-                });
-            }
-            htmlVars += '</div>';
-
-            const item = document.createElement('div');
-            item.className = 'item-lista';
-            item.style.display = 'block'; 
-            item.innerHTML = `
-                <div style="width:100%; padding: 5px 0;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="display:flex; align-items:center; gap:15px;">
-                            <img src="${p.imagem || ''}" style="width:50px; height:50px; object-fit:cover; border-radius:8px; border:1px solid #444;">
-                            <div><strong style="color:#fff; font-size:1.1em;">${p.nome}</strong><br><small style="color:#888">${p.categoria}</small></div>
-                        </div>
-                        <div style="display:flex; gap:10px;">
-                            <button onclick='prepararEdicao(${p.id})' style="background:transparent; color:#ffd700; border:1px solid #ffd700; padding:5px 10px; border-radius:5px;">✏️</button>
-                            <button onclick="deletarProduto(${p.id})" style="background:transparent; color:#ff4444; border:1px solid #ff4444; padding:5px 10px; border-radius:5px;">🗑️</button>
-                        </div>
+        container.innerHTML = produtos.map(p => `
+            <div style="background:#1a1a1a; padding:10px; margin-bottom:5px; border-radius:5px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img src="${p.imagem || ''}" style="width:40px; height:40px; border-radius:4px; object-fit:cover; background:#333;">
+                    <div>
+                        <div style="font-weight:bold; color:white;">${p.nome}</div>
+                        <div style="font-size:0.8em; color:#888;">${p.variacoes ? p.variacoes.length + ' opções' : 'Único'}</div>
                     </div>
-                    ${htmlVars}
                 </div>
-            `;
-            container.appendChild(item);
-        });
-    } catch (e) { console.error(e); }
+                <div>
+                    <button onclick="prepararEdicao('${p._id || p.id}')" style="background:none; border:1px solid #ffcc00; color:#ffcc00; border-radius:4px; cursor:pointer; margin-right:5px;">✏️</button>
+                    <button onclick="deletarProduto('${p._id || p.id}')" style="background:none; border:1px solid #ff4444; color:#ff4444; border-radius:4px; cursor:pointer;">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) { console.error("Erro lista produtos", e); }
 }
 
 // ==========================================
-// 3. GESTÃO DE CUPONS
+// 4. VENDAS
 // ==========================================
-async function carregarCupons() {
-    const container = document.getElementById('lista-cupons');
-    if(!container) return;
-    try {
-        // 👇 Uso do API_URL
-        const res = await fetch(`${API_URL}/api/cupons`);
-        const cupons = await res.json();
-        container.innerHTML = '';
-        cupons.forEach(c => {
-            container.innerHTML += `
-                <div class="card-item" style="padding:15px; margin-bottom:10px; border:1px solid #333; border-radius:5px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="color:#fff;">🎟️ <b style="color:#9d00ff">${c.codigo}</b> - <span style="color:#00ff88">${c.desconto}% OFF</span></span>
-                    <button onclick="deletarCupom('${c.codigo}')" style="background:none; border:none; color:#ff4444; cursor:pointer; font-size:1.2em;">🗑️</button>
-                </div>`;
-        });
-    } catch (e) { console.error(e); }
-}
-
-const formCupom = document.getElementById('form-cupom');
-if(formCupom) {
-    formCupom.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const codigo = document.getElementById('codigo-cupom').value;
-        const desconto = document.getElementById('valor-cupom').value;
-        // 👇 Uso do API_URL
-        await fetch(`${API_URL}/api/cupons`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ codigo, desconto }) });
-        alert("Cupom criado!");
-        e.target.reset();
-        carregarCupons();
-    });
-}
-
-window.deletarCupom = async function(cod) {
-    // 👇 Uso do API_URL
-    if(confirm("Apagar cupom?")) { await fetch(`${API_URL}/api/cupons/${cod}`, { method: 'DELETE' }); carregarCupons(); }
-};
-
-// ==========================================
-// 4. GESTÃO DE PEDIDOS E APROVAÇÃO
-// ==========================================
-let todasAsVendasCache = []; // Guarda as vendas para filtragem local
+let todasAsVendasCache = []; 
 
 async function carregarVendas() {
-    const container = document.getElementById('lista-vendas');
-    if(!container) return;
-    container.innerHTML = '<p style="color:#888">Buscando pedidos...</p>';
+    const tbody = document.getElementById('tabela-vendas'); 
+    const divLista = document.getElementById('lista-vendas'); 
     
     try {
-        // 👇 Uso do API_URL
         const res = await fetch(`${API_URL}/api/vendas`);
-        todasAsVendasCache = await res.json();
-        renderizarListaVendas(todasAsVendasCache);
-    } catch (e) { 
-        console.error(e); 
-        container.innerHTML = '<p style="color:red">Erro ao carregar vendas. Verifique se o servidor está rodando na porta 3000.</p>';
-    }
-}
+        const vendas = await res.json();
+        todasAsVendasCache = vendas;
 
-window.filtrarPedidos = function(filtro) {
-    const btns = document.querySelectorAll('.btn-filtro');
-    btns.forEach(b => b.style.opacity = '0.5');
-    event.target.style.opacity = '1';
+        const renderRows = (lista) => lista.map(v => {
+            const badgeClass = v.status === 'Aprovado' ? 'badge-aprovado' : (v.status === 'Cancelado' ? 'badge-cancelado' : 'badge-pendente');
+            const statusColor = v.status === 'Aprovado' ? '#00cc66' : (v.status === 'Pendente' ? '#ffaa00' : '#ff4444');
+            
+            const acoes = v.status === 'Pendente' ? `
+                <button onclick="confirmarVenda('${v._id || v.id_pedido}')" class="btn-action btn-approve" style="background:#00cc66; color:white; border:none; padding:5px 10px; cursor:pointer; margin-right:5px; border-radius:4px;">✔</button>
+                <button onclick="cancelarVenda('${v._id || v.id_pedido}')" class="btn-action btn-cancel" style="background:#ff4444; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">✖</button>
+            ` : '-';
 
-    if(filtro === 'todos') {
-        renderizarListaVendas(todasAsVendasCache);
-    } else {
-        const filtradas = todasAsVendasCache.filter(v => v.status === filtro);
-        renderizarListaVendas(filtradas);
-    }
-};
+            return `<tr>
+                <td style="color:#aaa;">#${String(v.id_pedido || v._id).slice(-4)}</td>
+                <td>${v.cliente.nome || v.cliente}</td>
+                <td style="color:cyan">${v.representante ? v.representante : '-'}</td>
+                <td style="font-weight:bold;">R$ ${parseFloat(v.total).toFixed(2)}</td>
+                <td><span class="badge ${badgeClass}" style="padding:2px 6px; border-radius:4px; background:${statusColor}; color:${v.status==='Pendente'?'black':'white'}">${v.status}</span></td>
+                <td>${acoes}</td>
+            </tr>`;
+        }).join('');
 
-function renderizarListaVendas(vendas) {
-    const container = document.getElementById('lista-vendas');
-    container.innerHTML = '';
-    
-    if(vendas.length === 0) { container.innerHTML = '<p style="color:#666">Nenhum pedido encontrado.</p>'; return; }
-    
-    vendas.forEach(v => {
-        const isPendente = v.status === 'Pendente';
-        const isCancelado = v.status === 'Cancelado';
-        
-        let statusColor = '#00ff88'; // Aprovado
-        if(isPendente) statusColor = '#ffaa00';
-        if(isCancelado) statusColor = '#ff4444';
-        
-        // Botões de ação
-        let botoesAcao = '';
-        if (isPendente) {
-            botoesAcao = `
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button onclick="confirmarVenda(${v.id_pedido})" style="flex:1; background: rgba(0,255,136,0.1); color:#00ff88; border:1px solid #00ff88; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">✅ APROVAR</button>
-                    <button onclick="cancelarVenda(${v.id_pedido})" style="flex:1; background: rgba(255,68,68,0.1); color:#ff4444; border:1px solid #ff4444; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold;">❌ RECUSAR</button>
-                </div>
-            `;
-        } else {
-            botoesAcao = `<div style="margin-top:10px; font-size:0.9em; text-align:right; color:${statusColor}; border-top:1px solid #333; padding-top:5px;">Status: ${v.status.toUpperCase()}</div>`;
-        }
+        if (tbody) tbody.innerHTML = vendas.length ? renderRows(vendas) : '<tr><td colspan="6">Sem pedidos.</td></tr>';
+        else if (divLista) divLista.innerHTML = vendas.length ? renderRows(vendas) : 'Sem pedidos.';
 
-        let itensHtml = v.produtos ? v.produtos.map(i => `<li style="margin-bottom:5px;">${i.qtd || i.quantity}x <span style="color:#fff">${i.produto || i.name}</span> <span style="color:#888">(${i.marca || i.tamanho || 'U'})</span></li>`).join('') : '<li style="color:#666">Sem itens</li>';
-        
-        // Formatar data
-        let dataDisplay = v.data;
-        try {
-            if(v.data.includes('T')) {
-                const d = new Date(v.data);
-                dataDisplay = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR').slice(0,5);
-            }
-        } catch(e){}
-
-        container.innerHTML += `
-            <div class="card-item" style="border-left: 4px solid ${statusColor}; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 5px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
-                    <div style="flex-grow:1;">
-                        <div style="font-size:1.1em; color:#fff; margin-bottom:5px;"><strong>PEDIDO #${v.id_pedido}</strong></div>
-                        <div style="color:#ddd; margin-bottom:5px;">Cliente: <b>${v.cliente}</b></div>
-                        <small style="color:#888;">📅 ${dataDisplay}</small>
-                        <ul style="margin:15px 0; padding-left:20px; color:#ccc;">${itensHtml}</ul>
-                        <div style="font-size:1.2em; color:#ffd700;">TOTAL: <b>R$ ${parseFloat(v.total).toFixed(2)}</b></div>
-                    </div>
-                </div>
-                ${botoesAcao}
-            </div>`;
-    });
+    } catch (e) { console.error("Erro vendas", e); }
 }
 
 window.confirmarVenda = async function(id) {
-    if(!confirm("Aprovar pedido? Isso irá baixar o estoque.")) return;
+    if(!confirm('Aprovar pedido? O estoque será atualizado automaticamente.')) return;
     try {
-        // 👇 Uso do API_URL
         const res = await fetch(`${API_URL}/api/venda/${id}/confirmar`, { method: 'POST' });
         const data = await res.json();
-        if(res.ok) { 
-            alert("✅ Venda aprovada!");
-            carregarVendas(); 
+        if(res.ok) {
+            alert(data.message);
+            carregarVendas();
             carregarDashboard();
-        } else { alert("Erro: " + data.message); }
-    } catch (e) { alert("Erro de conexão"); }
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    } catch(e) { alert('Erro de conexão'); }
 };
 
 window.cancelarVenda = async function(id) {
-    if(!confirm("Tem certeza que deseja RECUSAR este pedido?")) return;
-    try {
-        // 👇 Uso do API_URL
-        const res = await fetch(`${API_URL}/api/venda/${id}/cancelar`, { method: 'POST' });
-        const data = await res.json();
-        if(res.ok) { 
-            alert("❌ Venda recusada/cancelada!");
-            carregarVendas(); 
-            carregarDashboard();
-        } else { alert("Erro: " + data.message); }
-    } catch (e) { alert("Erro de conexão"); }
+    if(!confirm('Recusar este pedido?')) return;
+    await fetch(`${API_URL}/api/venda/${id}/cancelar`, { method: 'POST' });
+    carregarVendas();
+};
+
+window.filtrarPedidos = function(filtro) {
+    const tbody = document.getElementById('tabela-vendas');
+    const divLista = document.getElementById('lista-vendas');
+    
+    let filtradas = todasAsVendasCache;
+    if (filtro !== 'todos') {
+        filtradas = todasAsVendasCache.filter(v => v.status === filtro);
+    }
+
+    // Reutiliza a lógica de renderização
+    const renderRows = (lista) => lista.map(v => {
+        const badgeClass = v.status === 'Aprovado' ? 'badge-aprovado' : (v.status === 'Cancelado' ? 'badge-cancelado' : 'badge-pendente');
+        const statusColor = v.status === 'Aprovado' ? '#00cc66' : (v.status === 'Pendente' ? '#ffaa00' : '#ff4444');
+        return `<tr>
+            <td>#${String(v.id_pedido || v._id).slice(-4)}</td>
+            <td>${v.cliente.nome || v.cliente}</td>
+            <td>${v.representante || '-'}</td>
+            <td>R$ ${parseFloat(v.total).toFixed(2)}</td>
+            <td><span style="background:${statusColor}; padding:2px 6px; border-radius:4px; color:${v.status==='Pendente'?'black':'white'}">${v.status}</span></td>
+            <td>-</td>
+        </tr>`;
+    }).join('');
+
+    if (tbody) {
+        tbody.innerHTML = filtradas.length ? renderRows(filtradas) : '<tr><td colspan="6">Vazio</td></tr>';
+    } else if (divLista) {
+        divLista.innerHTML = filtradas.length ? filtradas.map(v => renderVendaCard(v)).join('') : 'Vazio';
+    }
 };
 
 // ==========================================
-// 5. CONFIGURAÇÕES
+// 5. REVENDEDORES (NOVO SISTEMA)
+// ==========================================
+async function carregarRevendedores() {
+    const tbody = document.getElementById('tabela-revendedores');
+    if (!tbody) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/revendedores`);
+        const reps = await res.json();
+        
+        tbody.innerHTML = reps.map(r => `
+            <tr>
+                <td style="color:white;">${r.nome}</td>
+                <td>
+                    <span style="background:#222; color:#00ff88; padding:2px 5px; font-family:monospace; border-radius:3px;">?ref=${r.slug}</span>
+                    <button onclick="copiarLink('${r.slug}')" style="border:none; background:none; cursor:pointer; font-size:1.2em; color:cyan; margin-left:5px;">📋</button>
+                </td>
+                <td style="color:#aaa;">${r.whatsapp || '-'}</td>
+                <td><button style="color:red; background:none; border:none; cursor:pointer; opacity:0.5;">Bloquear</button></td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error("Erro reps", e); }
+}
+
+async function salvarRevendedor(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetch(`${API_URL}/api/revendedores`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if(result.success) {
+            alert('Revendedor cadastrado com sucesso!');
+            e.target.reset();
+            carregarRevendedores();
+        } else {
+            alert('Erro: ' + (result.error || 'Falha ao criar'));
+        }
+    } catch(err) { console.error(err); alert('Erro de conexão'); }
+}
+
+window.copiarLink = function(slug) {
+    const url = `${window.location.origin}/?ref=${slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Link copiado: ' + url);
+    });
+};
+
+// ==========================================
+// 6. CONFIGURAÇÕES & CUPONS
 // ==========================================
 async function carregarConfiguracoesNoForm() {
     try {
-        // 👇 Uso do API_URL
         const res = await fetch(`${API_URL}/api/config`);
-        const config = await res.json();
-
-        if (document.getElementById('config-nome')) {
-            if (config.nomeLoja) document.getElementById('config-nome').value = config.nomeLoja;
-            if (config.corDestaque) document.getElementById('config-cor').value = config.corDestaque;
-        }
-
-        if (document.getElementById('social-zap-pedidos')) {
-            const zap = config.whatsapp || config.whatsappPedidos;
-            if (zap) document.getElementById('social-zap-pedidos').value = zap;
-            if (config.whatsappFlutuante) document.getElementById('social-zap-float').value = config.whatsappFlutuante;
-            if (config.instagramLink) document.getElementById('social-insta').value = config.instagramLink;
-        }
+        const conf = await res.json();
         
-    } catch (error) { console.error("Erro config:", error); }
+        if(document.getElementById('config-nome')) document.getElementById('config-nome').value = conf.nomeLoja || '';
+        if(document.getElementById('config-cor')) document.getElementById('config-cor').value = conf.corDestaque || '#ff6600';
+        if(document.getElementById('social-zap-pedidos')) document.getElementById('social-zap-pedidos').value = conf.whatsapp || '';
+        
+        // Carrega cupons aqui
+        carregarCupons();
+    } catch(e) {}
 }
 
 async function salvarConfigGeneric(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button');
-    const originalText = btn.innerText;
-    btn.innerText = "Salvando...";
-    btn.disabled = true;
-
-    const formData = new FormData(e.target);
+    const originalText = btn ? btn.innerText : 'Salvar';
+    if(btn) { btn.innerText = "Salvando..."; btn.disabled = true; }
 
     try {
-        // 👇 Uso do API_URL
-        await fetch(`${API_URL}/api/config`, { method: 'POST', body: formData });
-        alert("✅ Configurações salvas!");
+        await fetch(`${API_URL}/api/config`, { method: 'POST', body: new FormData(e.target) });
+        alert('Configurações salvas!');
     } catch (error) {
-        alert("Erro ao salvar.");
+        alert('Erro ao salvar.');
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
+        if(btn) { btn.innerText = originalText; btn.disabled = false; }
     }
 }
+
+async function carregarCupons() {
+    const div = document.getElementById('lista-cupons');
+    if(!div) return;
+    try {
+        const res = await fetch(`${API_URL}/api/cupons`);
+        const lista = await res.json();
+        div.innerHTML = lista.map(c => `
+            <div style="background:#1a1a1a; padding:10px; margin-bottom:5px; border-radius:4px; display:flex; justify-content:space-between; border:1px solid #333;">
+                <span style="color:white;"><b>${c.codigo}</b> (${c.desconto}%)</span>
+                <button onclick="deletarCupom('${c.codigo}')" style="color:red; background:none; border:none; cursor:pointer;">🗑️</button>
+            </div>
+        `).join('');
+    } catch(e){}
+}
+
+async function salvarCupom(e) {
+    e.preventDefault();
+    const codigo = document.getElementById('cupom-codigo').value;
+    const desconto = document.getElementById('cupom-valor').value;
+    
+    await fetch(`${API_URL}/api/cupons`, { 
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify({ codigo, desconto }) 
+    });
+    alert('Cupom criado!');
+    carregarCupons();
+    e.target.reset();
+}
+
+window.deletarCupom = async function(cod) {
+    if(confirm('Excluir cupom?')) {
+        await fetch(`${API_URL}/api/cupons/${cod}`, { method: 'DELETE' });
+        carregarCupons();
+    }
+};

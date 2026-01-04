@@ -33,12 +33,17 @@
 
         /* CONTEÚDO */
         .content-area { margin-left: 260px; flex-grow: 1; padding: 40px; width: calc(100% - 260px); }
+        
+        /* ESCONDER SEÇÕES (Sistema de Abas) */
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* --- CARDS & FORMS --- */
         .card { background: #121212; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; color: #ff5e00; font-weight: bold; font-size: 0.9rem; }
-        input, select { width: 100%; padding: 12px; background: #000; border: 1px solid #444; border-radius: 6px; color: white; outline: none; font-size: 16px; }
+        input, select, textarea { width: 100%; padding: 12px; background: #000; border: 1px solid #444; border-radius: 6px; color: white; outline: none; font-size: 16px; }
         input:focus { border-color: #ff5e00; }
         
         .btn-acao { width: 100%; padding: 15px; border-radius: 8px; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; }
@@ -58,14 +63,24 @@
         .dash-card.destaque { border-color: #ff5e00; background: linear-gradient(180deg, #1a1a1a 0%, #251000 100%); }
         .dash-card.destaque .valor { color: #ff5e00; }
 
-        /* --- PEDIDOS --- */
-        .card-item { border-left: 4px solid #333; padding: 15px; margin-bottom: 15px; background: #0a0a0a; border-radius: 5px; }
-        
-        /* Tabela de Vendas */
+        /* --- PEDIDOS E TABELAS --- */
         .vendas-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         .vendas-table th, .vendas-table td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
-        .vendas-table th { color: #888; font-size: 0.9em; }
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .vendas-table th { color: #ff5e00; font-size: 0.9em; text-transform: uppercase; background: #1a1a1a; }
+        .vendas-table tr:hover { background: #1a1a1a; }
+        
+        /* Status Badges */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .badge-pendente { background: #ffcc00; color: #000; }
+        .badge-aprovado { background: #00cc66; color: #fff; }
+        .badge-cancelado { background: #cc0000; color: #fff; }
+
+        /* Botões de Ação na Tabela */
+        .btn-action { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85em; margin-right: 5px; font-weight: bold; }
+        .btn-approve { background: #00cc66; color: white; }
+        .btn-approve:hover { background: #00aa55; }
+        .btn-cancel { background: #ff4444; color: white; }
+        .btn-cancel:hover { background: #cc0000; }
         
         /* --- MOBILE --- */
         @media (max-width: 768px) {
@@ -95,25 +110,25 @@
         <aside class="sidebar" id="sidebarAdmin">
             <h2>ADMIN</h2>
             <nav>
-                <button onclick="mostrarAba('dashboard'); toggleAdminMenu()" class="btn-nav ativo" id="nav-dashboard">
-                    <i class="fas fa-chart-line"></i> Dashboard & Relatórios
+                <button onclick="openTab('dashboard'); toggleAdminMenu()" class="btn-nav ativo tab-btn">
+                    <i class="fas fa-chart-line"></i> Dashboard
                 </button>
-                <button onclick="mostrarAba('pedidos'); toggleAdminMenu()" class="btn-nav" id="nav-pedidos">
-                    <i class="fas fa-clipboard-list"></i> Gestão de Pedidos
+                <button onclick="openTab('pedidos'); toggleAdminMenu()" class="btn-nav tab-btn">
+                    <i class="fas fa-clipboard-list"></i> Pedidos
                 </button>
-                <button onclick="mostrarAba('produtos'); toggleAdminMenu()" class="btn-nav" id="nav-produtos">
+                <button onclick="openTab('produtos'); toggleAdminMenu()" class="btn-nav tab-btn">
                     <i class="fas fa-box"></i> Produtos
                 </button>
-                <button onclick="mostrarAba('config'); toggleAdminMenu()" class="btn-nav" id="nav-config">
-                    <i class="fas fa-paint-brush"></i> App & Banners
+                <button onclick="openTab('revendedores'); toggleAdminMenu()" class="btn-nav tab-btn">
+                    <i class="fas fa-users"></i> Revendedores
                 </button>
-                <button onclick="mostrarAba('social'); toggleAdminMenu()" class="btn-nav" id="nav-social">
-                    <i class="fab fa-whatsapp"></i> Contato
+                <button onclick="openTab('config'); toggleAdminMenu()" class="btn-nav tab-btn">
+                    <i class="fas fa-paint-brush"></i> Configuração
                 </button>
                 <button onclick="window.location.href='/'" class="btn-nav">
                     <i class="fas fa-home"></i> Ver Loja
                 </button>
-                <button onclick="logout()" class="btn-nav btn-sair">
+                <button onclick="window.location.href='/logout'" class="btn-nav btn-sair">
                     <i class="fas fa-sign-out-alt"></i> Sair
                 </button>
             </nav>
@@ -121,24 +136,16 @@
 
         <main class="content-area">
             
-            <section id="aba-dashboard">
+            <section id="dashboard" class="tab-content active">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                     <h3 style="color:#fff; margin:0;">VISÃO GERAL</h3>
-                    <select id="filtro-periodo" onchange="carregarDashboard()" style="width:auto; padding:5px 15px; background:#333; border:none;">
-                        <option value="hoje">Hoje</option>
-                        <option value="7dias" selected>Últimos 7 Dias</option>
-                        <option value="30dias">Últimos 30 Dias</option>
-                    </select>
+                    <button onclick="carregarDashboard()" style="background:none; border:none; color:#ff5e00; cursor:pointer;"><i class="fas fa-sync"></i></button>
                 </div>
                 
                 <div class="dash-grid">
                     <div class="dash-card destaque">
-                        <h4>FATURAMENTO (PERÍODO)</h4>
+                        <h4>FATURAMENTO (HOJE)</h4>
                         <span class="valor" id="dash-faturamento">R$ 0,00</span>
-                    </div>
-                    <div class="dash-card">
-                        <h4>PEDIDOS APROVADOS</h4>
-                        <span class="valor" id="dash-vendas-qtd" style="color:#00ff88">0</span>
                     </div>
                     <div class="dash-card">
                         <h4>PENDENTES</h4>
@@ -150,118 +157,143 @@
                     </div>
                 </div>
 
-                <div class="card">
-                    <h4 style="color:#fff; margin-top:0;">EVOLUÇÃO DE VENDAS</h4>
-                    <div style="position: relative; height: 300px; width: 100%;">
-                        <canvas id="graficoVendas"></canvas>
-                    </div>
-                </div>
-
-                <div class="card" id="card-estoque-baixo" style="display:none;">
-                    <h4 style="color:#ff4444; margin-top:0;">⚠️ ESTOQUE CRÍTICO</h4>
-                    <div id="lista-estoque-baixo"></div>
-                </div>
-
-                <div class="card">
-                    <h4 style="color:#fff;">HISTÓRICO COMPLETO DE VENDAS</h4>
-                    <div class="table-container">
-                        <table class="vendas-table" id="tabela-historico">
-                            </table>
-                    </div>
+                <div class="card" id="card-estoque-baixo">
+                    <h4 style="color:#ff4444; margin-top:0;">⚠️ ALERTA DE ESTOQUE</h4>
+                    <ul id="lista-estoque-baixo" style="padding-left:20px; color:#ccc;">
+                        <li>Verificando...</li>
+                    </ul>
                 </div>
             </section>
 
-            <section id="aba-pedidos" style="display:none;">
+            <section id="pedidos" class="tab-content">
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h3 style="color:#fff; margin:0;">GERENCIAR PEDIDOS</h3>
                         <button onclick="carregarVendas()" style="background:#333; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">🔄 Atualizar</button>
                     </div>
                     
-                    <div style="margin-bottom:20px; display:flex; gap:10px;">
-                        <button onclick="filtrarPedidos('todos')" class="btn-filtro" style="padding:5px 10px; background:#333; color:white; border:none; border-radius:4px; cursor:pointer;">Todos</button>
-                        <button onclick="filtrarPedidos('Pendente')" class="btn-filtro" style="padding:5px 10px; background:#ffaa00; color:black; border:none; border-radius:4px; cursor:pointer;">Pendentes</button>
-                        <button onclick="filtrarPedidos('Aprovado')" class="btn-filtro" style="padding:5px 10px; background:#00ff88; color:black; border:none; border-radius:4px; cursor:pointer;">Aprovados</button>
-                    </div>
+                    <p style="color:#888; font-size:0.9em; margin-bottom:15px;">
+                        <i class="fas fa-info-circle"></i> Clique em <b>"Aprovar"</b> para confirmar o pagamento e baixar o estoque automaticamente.
+                    </p>
 
-                    <div id="lista-vendas">
-                        <p style="color:#888">Carregando pedidos...</p>
+                    <div class="table-container">
+                        <table class="vendas-table">
+                            <thead>
+                                <tr>
+                                    <th>#ID</th>
+                                    <th>Cliente</th>
+                                    <th>Revendedor</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-vendas">
+                                <tr><td colspan="6" style="text-align:center;">Carregando...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
 
-            <section id="aba-produtos" style="display: none;">
+            <section id="produtos" class="tab-content">
                 <div class="card">
                     <h3 style="margin-top:0; color:#fff;">NOVO PRODUTO</h3>
                     <form id="form-produto">
                         <input type="hidden" id="id-produto-editando">
                         <div class="form-group"><label>Nome do Produto</label><input type="text" name="nome" placeholder="Ex: Camiseta Tropa" required></div>
-                        <div class="form-group"><label>Categoria</label><input type="text" name="categoria" placeholder="Ex: Vestuário"></div>
+                        <div style="display:flex; gap:10px;">
+                            <div class="form-group" style="flex:1"><label>Categoria</label><input type="text" name="categoria" placeholder="Ex: Vestuário"></div>
+                            <div class="form-group" style="flex:1"><label>Preço Base (R$)</label><input type="number" step="0.01" name="preco"></div>
+                        </div>
                         <div class="form-group"><label>Imagem</label><input type="file" name="imagem" accept="image/*"></div>
-                        <label>Variações & Estoque</label>
-                        <div id="container-variacoes"></div>
-                        <button type="button" class="btn-acao btn-add" onclick="adicionarLinhaVariacao()">+ Variação</button>
-                        <hr style="border-color:#333; margin: 20px 0;">
-                        <button type="submit" class="btn-acao btn-salvar" id="btn-submit">SALVAR PRODUTO</button>
-                        <button type="button" id="btn-cancelar" onclick="cancelarEdicao()" class="btn-acao" style="background:#333; color:#ccc; display:none; margin-top:10px;">CANCELAR</button>
+                        
+                        <div class="form-group">
+                            <label>Variações (JSON Avançado)</label>
+                            <textarea name="variacoes" rows="3" placeholder='Ex: [{"marca":"P", "estoque":10, "preco":50}]' style="width:100%; background:#000; border:1px solid #444; color:white; padding:10px; border-radius:6px;"></textarea>
+                            <small style="color:#666;">Use formato JSON ou deixe vazio para produto simples.</small>
+                        </div>
+
+                        <button type="submit" class="btn-acao btn-salvar">SALVAR PRODUTO</button>
                     </form>
                 </div>
                 <div class="card">
-                    <h3 style="color:#fff;">ESTOQUE ATUAL</h3>
-                    <div class="table-container"><div id="lista-produtos-admin"></div></div>
+                    <h3 style="color:#fff;">CATÁLOGO</h3>
+                    <div id="lista-produtos-admin">Carregando...</div>
                 </div>
+            </section>
+
+            <section id="revendedores" class="tab-content">
                 <div class="card">
-                    <h3 style="color:#fff;">CUPONS</h3>
-                    <form id="form-cupom" style="display:flex; flex-direction:column; gap:10px;">
-                        <input type="text" id="codigo-cupom" placeholder="Código (Ex: BRUXO10)">
-                        <input type="number" id="valor-cupom" placeholder="% Desconto">
-                        <button type="submit" class="btn-acao btn-add" style="border-color:#9d00ff; color:#9d00ff;">CRIAR CUPOM</button>
+                    <h3 style="color:#fff; margin-top:0;">CADASTRAR REVENDEDOR</h3>
+                    <form id="form-revendedor">
+                        <div class="form-group">
+                            <label>Nome Completo</label>
+                            <input type="text" name="nome" required placeholder="Ex: João da Silva">
+                        </div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <div class="form-group" style="flex:1;">
+                                <label>Código do Link (Slug)</label>
+                                <input type="text" name="slug" required placeholder="ex: joao (sem espaços)">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label>WhatsApp</label>
+                                <input type="text" name="whatsapp" placeholder="Apenas números">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Chave PIX (Comissão)</label>
+                            <input type="text" name="chavePix">
+                        </div>
+                        <button type="submit" class="btn-acao btn-salvar">CRIAR PARCEIRO</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 style="color:#fff;">EQUIPE DE VENDAS</h3>
+                    <div class="table-container">
+                        <table class="vendas-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Link de Venda</th>
+                                    <th>Contato</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-revendedores">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="config" class="tab-content">
+                <div class="card">
+                    <h3 style="color:#fff;">PERSONALIZAR LOJA</h3>
+                    <form id="form-config">
+                        <div class="form-group"><label>Nome da Loja</label><input type="text" name="nomeLoja"></div>
+                        <div class="form-group"><label>Cor Destaque</label><input type="color" name="corDestaque" style="height:50px; cursor:pointer;"></div>
+                        <div class="form-group"><label>WhatsApp Principal</label><input type="text" name="whatsapp"></div>
+                        
+                        <hr style="border-color:#333; margin:20px 0;">
+                        
+                        <div class="form-group"><label>Fundo do Site</label><input type="file" name="fundoSite"></div>
+                        <div class="form-group"><label>Banner Topo</label><input type="file" name="fundoHeader"></div>
+                        <div class="form-group"><label>Banner Promo 1</label><input type="file" name="banner1"></div>
+                        
+                        <button type="submit" class="btn-acao btn-salvar">SALVAR ALTERAÇÕES</button>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <h3 style="color:#fff;">CUPONS DE DESCONTO</h3>
+                    <form id="form-cupom" style="display:flex; gap:10px;">
+                        <input type="text" id="cupom-codigo" name="codigo" placeholder="Código (Ex: VIP10)" required>
+                        <input type="number" id="cupom-valor" name="desconto" placeholder="%" style="width:80px;" required>
+                        <button type="submit" class="btn-add" style="width:auto; padding:0 20px;">ADD</button>
                     </form>
                     <div id="lista-cupons" style="margin-top:15px;"></div>
-                </div>
-            </section>
-
-            <section id="aba-config" style="display: none;">
-                <div class="card">
-                    <h3 style="color:#fff;">APARÊNCIA & BANNERS</h3>
-                    <p style="color:#888; font-size:0.9rem;">Personalize o aplicativo do cliente.</p>
-                    <form id="form-tema">
-                        <div class="form-group"><label>Nome da Loja</label><input type="text" id="config-nome" name="nomeLoja"></div>
-                        <div class="form-group"><label>Cor Principal</label><input type="color" id="config-cor" name="corDestaque" style="height:50px; cursor:pointer;"></div>
-                        
-                        <div style="background:#1a1a1a; padding:15px; border-radius:8px; margin-bottom:15px;">
-                            <label>Carrossel de Destaques (Topo)</label>
-                            <small style="color:#ccc; display:block; margin-bottom:10px;">Envie até 3 imagens.</small>
-                            <div class="form-group"><input type="file" name="banner1" accept="image/*"></div>
-                            <div class="form-group"><input type="file" name="banner2" accept="image/*"></div>
-                            <div class="form-group"><input type="file" name="banner3" accept="image/*"></div>
-                        </div>
-
-                        <div class="form-group"><label>Fundo do Site</label><input type="file" name="fundoSite" accept="image/*"></div>
-                        <div class="form-group"><label>Banner Topo (Fixo)</label><input type="file" name="fundoHeader" accept="image/*"></div>
-                        <button type="submit" class="btn-acao btn-salvar">SALVAR APARÊNCIA</button>
-                    </form>
-                </div>
-            </section>
-
-            <section id="aba-social" style="display: none;">
-                <div class="card">
-                    <h3 style="color:#fff;">REDES SOCIAIS & CONTATO</h3>
-                    <form id="form-social">
-                        <div class="form-group">
-                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp PEDIDOS</label>
-                            <input type="text" id="social-zap-pedidos" name="whatsapp" placeholder="Ex: 5583999999999">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fab fa-whatsapp" style="color:#00ff88;"></i> WhatsApp Suporte</label>
-                            <input type="text" id="social-zap-float" name="whatsappFlutuante" placeholder="Ex: 5583999999999">
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fab fa-instagram" style="color:#e1306c;"></i> Link Instagram</label>
-                            <input type="text" id="social-insta" name="instagramLink">
-                        </div>
-                        <button type="submit" class="btn-acao btn-salvar">SALVAR CONTATOS</button>
-                    </form>
                 </div>
             </section>
 
@@ -269,5 +301,14 @@
     </div>
 
     <script src="/js/admin.js"></script>
+    <script>
+        // Função simples para mobile (já existia no seu, mantendo aqui caso o admin.js falhe no toggle)
+        function toggleAdminMenu() {
+            const sb = document.getElementById('sidebarAdmin');
+            const ov = document.getElementById('overlayAdmin');
+            if(sb) sb.classList.toggle('aberto');
+            if(ov) ov.classList.toggle('aberto');
+        }
+    </script>
 </body>
 </html>

@@ -1,107 +1,155 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const session = require('express-session');
+const mongoose = require('mongoose');
+
+// 🔥 MUDANÇA: Biblioteca de sessão mais estável
+const MongoDBStore = require('connect-mongodb-session')(session);
 
 const app = express();
-// 🔥 CORREÇÃO CRÍTICA PARA O RENDER: Usar a porta do ambiente
 const PORT = process.env.PORT || 3000;
 
-// --- CONFIGURAÇÕES BÁSICAS ---
-app.use(cors()); 
-app.use(express.json()); 
-// Aumentado o limite para aceitar uploads maiores de variações/imagens
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); 
-app.use(express.static('public')); 
-// Garante que imagens upadas sejam servidas
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+// --- CONEXÃO COM MONGODB ---
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('✅ Conectado ao MongoDB com sucesso!'))
+    .catch(err => console.error('❌ Erro ao conectar no Mongo:', err));
 
-// --- CONFIGURAÇÃO DA SESSÃO ---
+// --- CONFIGURAÇÃO DA SESSÃO NO BANCO ---
+const store = new MongoDBStore({
+    uri: process.env.MONGO_URI,
+    collection: 'sessions' // Nome da tabela onde ficarão os logins
+});
+
+store.on('error', function(error) {
+    console.log('Erro na sessão:', error);
+});
+
 app.use(session({
-    secret: 'chave-secreta-sistema-loja',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // Mude para true se tiver HTTPS configurado
+    secret: process.env.SESSION_SECRET || 'chave-secreta-sistema-loja',
+    cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 semana
+        secure: false // Mude para true apenas se tiver HTTPS (SSL)
+    },
+    store: store,
+    resave: true,
+    saveUninitialized: true
 }));
 
-// --- CONFIGURAÇÃO DE UPLOAD (MULTER) ---
+// ========================================================
+// 🗂️ DEFINIÇÃO DOS MODELOS (SCHEMAS)
+// ========================================================
+
+const ProdutoSchema = new mongoose.Schema({
+    nome: String,
+    categoria: String,
+    preco: Number,
+    imagem: String,
+    variacoes: [Object], 
+    ativo: { type: Boolean, default: true },
+    dataCriacao: { type: Date, default: Date.now }
+});
+const Produto = mongoose.model('Produto', ProdutoSchema);
+
+const RevendedorSchema = new mongoose.Schema({
+    nome: { type: String, required: true },
+    slug: { type: String, required: true, unique: true }, 
+    whatsapp: String,
+    chavePix: String,
+    ativo: { type: Boolean, default: true }
+});
+const Representante = mongoose.model('Representante', RevendedorSchema);
+
+const VendaSchema = new mongoose.Schema({
+    id_pedido: { type: Number, default: () => Date.now() }, 
+    cliente: { type: Object }, 
+    produtos: [Object], 
+    total: Number,
+    representante: { type: String, default: null }, 
+    status: { type: String, default: 'Pendente' },
+    data: { type: Date, default: Date.now }
+});
+const Venda = mongoose.model('Venda', VendaSchema);
+
+const CupomSchema = new mongoose.Schema({
+    codigo: { type: String, unique: true, uppercase: true },
+    desconto: Number
+});
+const Cupom = mongoose.model('Cupom', CupomSchema);
+
+const ConfigSchema = new mongoose.Schema({
+    nomeLoja: String,
+    whatsapp: String,
+    fundoSite: String,
+    fundoHeader: String,
+    banner1: String,
+    banner2: String,
+    banner3: String,
+    corDestaque: String,
+    whatsappFlutuante: String,
+    instagramLink: String
+}, { strict: false }); 
+const Config = mongoose.model('Config', ConfigSchema);
+
+
+// --- CONFIGURAÇÕES BÁSICAS DO EXPRESS ---
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.static('public'));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
+// --- UPLOAD (MULTER) ---
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = path.join(__dirname, 'public', 'uploads');
-        if (!fs.existsSync(dir)){
+        if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
-        cb(null, dir); 
+        cb(null, dir);
     },
     filename: (req, file, cb) => {
-        // Limpeza de nome de arquivo para evitar erros de URL
         const nomeLimpo = file.originalname.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
         cb(null, Date.now() + '-' + nomeLimpo);
     }
 });
 const upload = multer({ storage: storage });
 
-// --- BANCO DE DADOS (ARQUIVOS JSON) ---
-const DATA_DIR = path.join(__dirname, 'data');
-// Garante que a pasta data existe
-if (!fs.existsSync(DATA_DIR)){
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-const ARQUIVO_PRODUTOS = path.join(DATA_DIR, 'produtos.json');
-const ARQUIVO_VENDAS = path.join(DATA_DIR, 'vendas.json');
-const ARQUIVO_CUPONS = path.join(DATA_DIR, 'cupons.json');
-const ARQUIVO_CONFIG = path.join(DATA_DIR, 'loja-config.json'); 
-
-// Função auxiliar para ler JSON (Blindada contra falhas)
-function lerJSON(arquivo) {
-    try {
-        if (!fs.existsSync(arquivo)) {
-            const conteudoPadrao = arquivo.includes('config') ? '{}' : '[]';
-            fs.writeFileSync(arquivo, conteudoPadrao);
-            return JSON.parse(conteudoPadrao);
-        }
-        const dados = fs.readFileSync(arquivo, 'utf8');
-        return JSON.parse(dados || (arquivo.includes('config') ? '{}' : '[]'));
-    } catch (e) {
-        console.error(`Erro ao ler ${arquivo}:`, e.message);
-        return (arquivo.includes('config') ? {} : []);
-    }
-}
-
-function salvarJSON(arquivo, dados) {
-    try {
-        fs.writeFileSync(arquivo, JSON.stringify(dados, null, 2));
-    } catch (e) {
-        console.error(`Erro ao salvar ${arquivo}:`, e.message);
-    }
-}
 
 // ========================================================
-// 🔐 ÁREA DE SEGURANÇA
+// 🔐 ÁREA DE SEGURANÇA (LOGIN)
 // ========================================================
 
 app.post('/api/login', (req, res) => {
-    // Compatibilidade com diferentes nomes de campo que possam vir do front
     const user = req.body.user;
     const senha = req.body.senha || req.body.pass;
-    
-    if (senha === 'admin123' || (user === 'admin' && senha === '123456')) { 
+
+    const adminUser = process.env.ADMIN_USER || 'admin';
+    const adminPass = process.env.ADMIN_PASS || '123456'; 
+
+    if (senha === 'admin123' || (user === adminUser && senha === adminPass)) {
         req.session.usuarioLogado = true;
+        req.session.save(); // Força salvar a sessão
         res.json({ success: true });
     } else {
         res.status(401).json({ success: false, message: 'Senha incorreta' });
     }
 });
 
-app.get('/admin', (req, res) => {
-    if (req.session.usuarioLogado) {
-        res.sendFile(path.join(__dirname, 'private', 'admin.html'));
-    } else {
-        res.redirect('/login.html');
-    }
+function isAuthenticated(req, res, next) {
+    if (req.session.usuarioLogado) return next();
+    res.redirect('/login.html'); 
+}
+
+app.get('/admin', isAuthenticated, (req, res) => {
+    res.sendFile(path.join(__dirname, 'private', 'admin.html'));
+});
+
+app.get('/check-auth', (req, res) => {
+    res.json({ authenticated: !!req.session.usuarioLogado });
 });
 
 app.get('/logout', (req, res) => {
@@ -110,22 +158,22 @@ app.get('/logout', (req, res) => {
 });
 
 // ========================================================
-// 📊 DASHBOARD & ESTATÍSTICAS (SUA LÓGICA RESTAURADA)
+// 📊 DASHBOARD
 // ========================================================
 
-app.get('/api/dashboard', (req, res) => {
+app.get('/api/dashboard', async (req, res) => {
     try {
-        const vendas = lerJSON(ARQUIVO_VENDAS);
-        const produtos = lerJSON(ARQUIVO_PRODUTOS);
+        const vendas = await Venda.find();
+        const produtos = await Produto.find();
 
-        const hoje = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        
+        const hoje = new Date().toISOString().split('T')[0]; 
+
         let faturamentoHoje = 0;
         let pendentes = 0;
         let totalVendasAprovadas = 0;
         let valorTotalAprovado = 0;
 
-        // Mapa para o Gráfico (Últimos 7 dias)
+        // Mapa para o Gráfico
         const vendasPorDia = {};
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
@@ -135,15 +183,8 @@ app.get('/api/dashboard', (req, res) => {
         }
 
         vendas.forEach(v => {
-            // Normalização de data
             let dataVenda = '';
-            try {
-                if(v.data && v.data.includes('T')) dataVenda = v.data.split('T')[0];
-                else if (v.data) {
-                    const parts = v.data.split(' ')[0].split('/'); 
-                    if(parts.length === 3) dataVenda = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                }
-            } catch(e) {}
+            if (v.data) dataVenda = new Date(v.data).toISOString().split('T')[0];
 
             if (v.status === 'Pendente') {
                 pendentes++;
@@ -164,16 +205,17 @@ app.get('/api/dashboard', (req, res) => {
 
         const ticketMedio = totalVendasAprovadas > 0 ? (valorTotalAprovado / totalVendasAprovadas) : 0;
 
-        // Produtos com Baixo Estoque (< 5)
+        // Estoque Baixo
         const estoqueBaixo = [];
         produtos.forEach(p => {
-            if(p.variacoes && Array.isArray(p.variacoes)) {
+            if (p.variacoes && Array.isArray(p.variacoes)) {
                 p.variacoes.forEach(v => {
-                    if(v.estoque < 5) {
+                    const qtd = parseInt(v.estoque || 0);
+                    if (qtd < 5) {
                         estoqueBaixo.push({
                             nome: p.nome,
                             marca: v.marca || v.tamanho || 'Padrão',
-                            estoque: v.estoque
+                            estoque: qtd
                         });
                     }
                 });
@@ -184,6 +226,7 @@ app.get('/api/dashboard', (req, res) => {
             faturamentoHoje,
             pendentes,
             ticketMedio,
+            totalVendas: totalVendasAprovadas,
             estoqueBaixo,
             grafico: {
                 labels: Object.keys(vendasPorDia),
@@ -198,78 +241,105 @@ app.get('/api/dashboard', (req, res) => {
 });
 
 // ========================================================
-// 📦 API DE PRODUTOS (COM VARIAÇÕES E EDIÇÃO)
+// 👥 API DE REVENDEDORES
 // ========================================================
 
-app.get('/api/produtos', (req, res) => {
-    const produtos = lerJSON(ARQUIVO_PRODUTOS);
-    res.json(produtos);
+app.get('/api/revendedores', async (req, res) => {
+    try {
+        const reps = await Representante.find();
+        res.json(reps);
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao buscar revendedores' });
+    }
 });
 
-app.post('/api/produtos', upload.single('imagem'), (req, res) => {
+app.get('/api/revendedor/:slug', async (req, res) => {
     try {
-        const produtos = lerJSON(ARQUIVO_PRODUTOS);
-        
+        const rep = await Representante.findOne({ slug: req.params.slug, ativo: true });
+        if (rep) res.json({ valido: true, nome: rep.nome, whatsapp: rep.whatsapp });
+        else res.json({ valido: false });
+    } catch (e) {
+        res.json({ valido: false });
+    }
+});
+
+app.post('/api/revendedores', isAuthenticated, async (req, res) => {
+    try {
+        await Representante.create(req.body);
+        res.json({ success: true, message: 'Revendedor criado!' });
+    } catch (e) {
+        res.status(400).json({ error: 'Erro. Verifique se o código (slug) já existe.' });
+    }
+});
+
+// ========================================================
+// 📦 API DE PRODUTOS
+// ========================================================
+
+app.get('/api/produtos', async (req, res) => {
+    try {
+        const produtos = await Produto.find().sort({ dataCriacao: -1 });
+        res.json(produtos);
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao buscar produtos' });
+    }
+});
+
+app.post('/api/produtos', isAuthenticated, upload.single('imagem'), async (req, res) => {
+    try {
         let variacoes = [];
         if (typeof req.body.variacoes === 'string') {
-            try { variacoes = JSON.parse(req.body.variacoes); } catch(e) { variacoes = []; }
+            try { variacoes = JSON.parse(req.body.variacoes); } catch (e) { variacoes = []; }
         } else {
             variacoes = req.body.variacoes || [];
         }
 
-        const novoProduto = {
-            id: Date.now(),
+        const precoBase = variacoes.length > 0 
+            ? Math.min(...variacoes.map(v => parseFloat(v.preco || v.preco_venda || 0))) 
+            : (parseFloat(req.body.preco) || 0);
+
+        const novoProduto = await Produto.create({
             nome: req.body.nome,
             categoria: req.body.categoria,
             imagem: req.file ? `/uploads/${req.file.filename}` : '',
             variacoes: variacoes,
             ativo: true,
-            // Preço base: pega o menor preço das variações ou 0
-            preco: variacoes.length > 0 ? Math.min(...variacoes.map(v => parseFloat(v.preco))) : (parseFloat(req.body.preco) || 0)
-        };
+            preco: precoBase
+        });
 
-        produtos.push(novoProduto);
-        salvarJSON(ARQUIVO_PRODUTOS, produtos);
-        
-        // Suporta resposta JSON ou Redirect dependendo de quem chama
-        if(req.xhr || req.headers.accept.indexOf('json') > -1) {
-             res.json({ message: 'Produto cadastrado!', produto: novoProduto });
-        } else {
-             res.redirect('/admin'); // Fallback para forms HTML normais
-        }
+        res.json({ message: 'Produto cadastrado!', produto: novoProduto });
     } catch (erro) {
         console.error(erro);
-        res.status(500).json({ error: "Erro interno" });
+        res.status(500).json({ error: "Erro interno ao criar produto" });
     }
 });
 
-app.put('/api/produtos/:id', upload.single('imagem'), (req, res) => {
+app.put('/api/produtos/:id', isAuthenticated, upload.single('imagem'), async (req, res) => {
     try {
-        const id = parseInt(req.params.id);
-        let produtos = lerJSON(ARQUIVO_PRODUTOS);
-        const index = produtos.findIndex(p => p.id === id);
-
-        if (index === -1) return res.status(404).json({ message: "Produto não encontrado" });
+        const id = req.params.id;
+        const produtoAtual = await Produto.findById(id);
+        if (!produtoAtual) return res.status(404).json({ message: "Produto não encontrado" });
 
         let variacoes = [];
         if (typeof req.body.variacoes === 'string') {
-            try { variacoes = JSON.parse(req.body.variacoes); } catch(e) { variacoes = []; }
+            try { variacoes = JSON.parse(req.body.variacoes); } catch (e) { variacoes = []; }
         } else {
             variacoes = req.body.variacoes || [];
         }
 
-        const imagemFinal = req.file ? `/uploads/${req.file.filename}` : produtos[index].imagem;
+        const imagemFinal = req.file ? `/uploads/${req.file.filename}` : produtoAtual.imagem;
+        const precoBase = variacoes.length > 0 
+            ? Math.min(...variacoes.map(v => parseFloat(v.preco || v.preco_venda || 0))) 
+            : (parseFloat(req.body.preco) || 0);
 
-        produtos[index] = {
-            ...produtos[index],
+        await Produto.findByIdAndUpdate(id, {
             nome: req.body.nome,
             categoria: req.body.categoria,
             imagem: imagemFinal,
             variacoes: variacoes,
-            preco: variacoes.length > 0 ? Math.min(...variacoes.map(v => parseFloat(v.preco))) : (parseFloat(req.body.preco) || 0)
-        };
+            preco: precoBase
+        });
 
-        salvarJSON(ARQUIVO_PRODUTOS, produtos);
         res.json({ message: 'Produto atualizado com sucesso!' });
     } catch (erro) {
         console.error(erro);
@@ -277,216 +347,186 @@ app.put('/api/produtos/:id', upload.single('imagem'), (req, res) => {
     }
 });
 
-app.delete('/api/produtos/:id', (req, res) => {
-    const id = parseInt(req.params.id);
-    let produtos = lerJSON(ARQUIVO_PRODUTOS);
-    
-    // Tenta limpar imagem do disco
-    const produto = produtos.find(p => p.id === id);
-    if(produto && produto.imagem && produto.imagem.startsWith('/uploads/')) {
-         try {
-            const pathImg = path.join(__dirname, 'public', produto.imagem);
-            if(fs.existsSync(pathImg)) fs.unlinkSync(pathImg);
-         } catch(e) { console.error("Erro ao apagar imagem:", e); }
+app.delete('/api/produtos/:id', isAuthenticated, async (req, res) => {
+    try {
+        const id = req.params.id;
+        await Produto.findByIdAndDelete(id);
+        res.json({ message: 'Produto deletado!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao deletar' });
     }
-
-    const novaLista = produtos.filter(produto => produto.id !== id);
-    salvarJSON(ARQUIVO_PRODUTOS, novaLista);
-    res.json({ message: 'Produto deletado!' });
 });
 
 // ========================================================
-// 🎟️ API DE CUPONS (RESTAURADA)
+// 🎟️ API DE CUPONS
 // ========================================================
 
-app.get('/api/cupons', (req, res) => {
-    res.json(lerJSON(ARQUIVO_CUPONS));
+app.get('/api/cupons', async (req, res) => {
+    const cupons = await Cupom.find();
+    res.json(cupons);
 });
 
-app.post('/api/cupons', (req, res) => {
-    const cupons = lerJSON(ARQUIVO_CUPONS);
-    const { codigo, desconto } = req.body;
-    
-    if (cupons.find(c => c.codigo === codigo.toUpperCase())) {
-        return res.status(400).json({ message: 'Código já existe' });
+app.post('/api/cupons', isAuthenticated, async (req, res) => {
+    try {
+        const { codigo, desconto } = req.body;
+        await Cupom.create({ codigo: codigo.toUpperCase(), desconto: parseInt(desconto) });
+        res.json({ message: 'Cupom criado' });
+    } catch (e) {
+        res.status(400).json({ message: 'Erro ao criar cupom' });
     }
-
-    cupons.push({ codigo: codigo.toUpperCase(), desconto: parseInt(desconto) });
-    salvarJSON(ARQUIVO_CUPONS, cupons);
-    res.json({ message: 'Cupom criado' });
 });
 
-app.delete('/api/cupons/:codigo', (req, res) => {
-    const codigo = req.params.codigo.toUpperCase();
-    let cupons = lerJSON(ARQUIVO_CUPONS);
-    const novaLista = cupons.filter(c => c.codigo !== codigo);
-    salvarJSON(ARQUIVO_CUPONS, novaLista);
+app.delete('/api/cupons/:codigo', isAuthenticated, async (req, res) => {
+    await Cupom.findOneAndDelete({ codigo: req.params.codigo.toUpperCase() });
     res.json({ message: 'Cupom deletado' });
 });
 
-app.get('/api/cupom/:codigo', (req, res) => {
-    const codigo = req.params.codigo.toUpperCase();
-    const cupons = lerJSON(ARQUIVO_CUPONS);
-    const cupom = cupons.find(c => c.codigo === codigo);
-
-    if (cupom) {
-        res.json({ valido: true, desconto: cupom.desconto });
-    } else {
-        res.json({ valido: false });
-    }
+app.get('/api/cupom/:codigo', async (req, res) => {
+    const cupom = await Cupom.findOne({ codigo: req.params.codigo.toUpperCase() });
+    if (cupom) res.json({ valido: true, desconto: cupom.desconto });
+    else res.json({ valido: false });
 });
 
 // ========================================================
-// 💰 VENDAS E ESTOQUE (COM BAIXA DE ESTOQUE)
+// 💰 VENDAS E ESTOQUE
 // ========================================================
 
-app.get('/api/vendas', (req, res) => {
-    const vendas = lerJSON(ARQUIVO_VENDAS);
-    res.json(vendas.reverse());
+app.get('/api/vendas', isAuthenticated, async (req, res) => {
+    const vendas = await Venda.find().sort({ data: -1 });
+    res.json(vendas);
 });
 
-app.post('/api/vendas', (req, res) => {
+app.post('/api/vendas', async (req, res) => {
     try {
-        const vendas = lerJSON(ARQUIVO_VENDAS);
         const corpo = req.body;
-
         const listaProdutos = corpo.produtos || corpo.itens || [];
 
         if (!listaProdutos || listaProdutos.length === 0) {
-            return res.status(400).json({ success: false, message: "O pedido está vazio." });
+            return res.status(400).json({ success: false, message: "Pedido vazio." });
         }
-        
-        const novaVenda = {
-            id_pedido: Date.now(),
-            data: new Date().toISOString(), 
-            cliente: corpo.cliente || 'Cliente do Site',
+
+        const novaVenda = await Venda.create({
+            cliente: corpo.cliente || { nome: 'Cliente Site' },
             produtos: listaProdutos,
             total: parseFloat(corpo.total) || 0,
+            representante: corpo.representante || null,
             status: 'Pendente'
-        };
+        });
 
-        vendas.push(novaVenda);
-        salvarJSON(ARQUIVO_VENDAS, vendas);
-        
-        console.log(`[VENDA] Pedido registrado: #${novaVenda.id_pedido} - R$ ${novaVenda.total}`);
+        console.log(`[VENDA] Nova venda registrada: ${novaVenda.id_pedido}`);
         res.json({ success: true, message: 'Pedido registrado!', id: novaVenda.id_pedido });
 
     } catch (err) {
-        console.error("Erro ao salvar venda:", err);
+        console.error("Erro venda:", err);
         res.status(500).json({ success: false, message: "Erro interno." });
     }
 });
 
-app.post('/api/venda', (req, res) => {
-    req.url = '/api/vendas';
-    app._router.handle(req, res);
-});
+app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-// Rota de confirmação com BAIXA DE ESTOQUE
-app.post('/api/venda/:id/confirmar', (req, res) => {
-    const idPedido = parseInt(req.params.id);
-    
-    let vendas = lerJSON(ARQUIVO_VENDAS);
-    let produtos = lerJSON(ARQUIVO_PRODUTOS);
-    
-    const vendaIndex = vendas.findIndex(v => v.id_pedido === idPedido);
-    
-    if (vendaIndex === -1) return res.status(404).json({ message: 'Venda não encontrada' });
-    if (vendas[vendaIndex].status === 'Aprovado') return res.status(400).json({ message: 'Venda já foi aprovada antes!' });
+    try {
+        let venda = await Venda.findOne({ id_pedido: req.params.id }).session(session);
+        if (!venda && mongoose.Types.ObjectId.isValid(req.params.id)) {
+            venda = await Venda.findById(req.params.id).session(session);
+        }
 
-    const itensVenda = vendas[vendaIndex].produtos || vendas[vendaIndex].itens || [];
-    let erros = [];
+        if (!venda) throw new Error('Venda não encontrada');
+        if (venda.status === 'Aprovado') throw new Error('Já aprovada');
 
-    // Lógica para baixar o estoque
-    itensVenda.forEach(itemVenda => {
-        // Tenta achar o produto (pelo nome ou id, dependendo de como o front manda)
-        // No script atual parece ser pelo nome
-        const produto = produtos.find(p => p.nome === itemVenda.nome || p.nome === itemVenda.produto || p.id === itemVenda.id);
-        
-        if (produto && produto.variacoes) {
-            // Tenta achar a variação correta
-            const variacao = produto.variacoes.find(v => 
-                (v.marca && v.marca === itemVenda.marca) || 
-                (v.tamanho && v.tamanho === itemVenda.tamanho) ||
-                (v.nome && v.nome === itemVenda.variacao) // Caso genérico
-            );
-            
-            if (variacao) {
-                const qtd = parseInt(itemVenda.quantidade || itemVenda.qtd || 1);
-                if (variacao.estoque >= qtd) {
-                    variacao.estoque -= qtd;
-                } else {
-                    erros.push(`Estoque insuficiente para ${produto.nome} - ${variacao.marca || variacao.tamanho}`);
+        for (const item of venda.produtos) {
+            const produto = await Produto.findOne({ nome: item.produto }).session(session);
+
+            if (produto && produto.variacoes) {
+                const indexVar = produto.variacoes.findIndex(v => 
+                    (v.marca && v.marca === item.marca) ||
+                    (v.tamanho && v.tamanho === item.marca) || 
+                    (v.marca === item.tamanho) // Tenta achar match cruzado
+                );
+
+                if (indexVar !== -1) {
+                    const qtd = parseInt(item.qtd || item.quantidade || 1);
+                    if (produto.variacoes[indexVar].estoque >= qtd) {
+                        produto.variacoes[indexVar].estoque -= qtd;
+                        produto.markModified('variacoes'); 
+                        await produto.save({ session });
+                    } else {
+                        throw new Error(`Estoque insuficiente: ${produto.nome}`);
+                    }
                 }
             }
         }
-    });
 
-    if (erros.length > 0) {
-        // Em um sistema real bloquearia, aqui apenas avisamos ou forçamos dependendo da regra
-        // return res.status(400).json({ message: 'Erro ao baixar estoque', detalhes: erros });
-        console.warn("Aviso de estoque negativo:", erros);
+        venda.status = 'Aprovado';
+        await venda.save({ session });
+
+        await session.commitTransaction();
+        res.json({ message: 'Venda confirmada e estoque atualizado!' });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error(error);
+        res.status(400).json({ message: error.message || 'Erro ao processar' });
+    } finally {
+        session.endSession();
     }
-
-    salvarJSON(ARQUIVO_PRODUTOS, produtos);
-    vendas[vendaIndex].status = 'Aprovado';
-    salvarJSON(ARQUIVO_VENDAS, vendas);
-
-    res.json({ message: 'Venda confirmada e estoque atualizado com sucesso!' });
 });
 
-app.post('/api/venda/:id/cancelar', (req, res) => {
-    const idPedido = parseInt(req.params.id);
-    let vendas = lerJSON(ARQUIVO_VENDAS);
-    const vendaIndex = vendas.findIndex(v => v.id_pedido === idPedido);
-    
-    if (vendaIndex === -1) return res.status(404).json({ message: 'Venda não encontrada' });
-    
-    vendas[vendaIndex].status = 'Cancelado';
-    salvarJSON(ARQUIVO_VENDAS, vendas);
-    res.json({ message: 'Venda recusada com sucesso!' });
+app.post('/api/venda/:id/cancelar', isAuthenticated, async (req, res) => {
+    try {
+        let filtro = { id_pedido: req.params.id };
+        if (mongoose.Types.ObjectId.isValid(req.params.id)) filtro = { _id: req.params.id };
+
+        const venda = await Venda.findOne(filtro);
+        if (!venda) return res.status(404).json({ message: 'Venda não encontrada' });
+
+        venda.status = 'Cancelado';
+        await venda.save();
+        res.json({ message: 'Venda cancelada!' });
+    } catch (e) {
+        res.status(500).json({ error: 'Erro ao cancelar' });
+    }
 });
 
 // ========================================================
-// 🎨 CONFIGURAÇÕES DA LOJA (COM MULTIPLOS ARQUIVOS)
+// 🎨 CONFIGURAÇÕES
 // ========================================================
 
-app.get('/api/config', (req, res) => {
-    const config = lerJSON(ARQUIVO_CONFIG);
+app.get('/api/config', async (req, res) => {
+    const config = await Config.findOne() || {};
     res.json(config);
 });
 
 const configUpload = upload.fields([
     { name: 'fundoSite', maxCount: 1 },
     { name: 'fundoHeader', maxCount: 1 },
-    { name: 'banner1', maxCount: 1 }, 
-    { name: 'banner2', maxCount: 1 }, 
-    { name: 'banner3', maxCount: 1 }  
+    { name: 'banner1', maxCount: 1 },
+    { name: 'banner2', maxCount: 1 },
+    { name: 'banner3', maxCount: 1 }
 ]);
 
-app.post('/api/config', configUpload, (req, res) => {
+app.post('/api/config', isAuthenticated, configUpload, async (req, res) => {
     try {
-        let currentConfig = lerJSON(ARQUIVO_CONFIG);
-        const novaConfig = { ...currentConfig, ...req.body };
+        let configData = { ...req.body };
 
-        if (req.files['fundoSite']) novaConfig.fundoSite = `/uploads/${req.files['fundoSite'][0].filename}`;
-        if (req.files['fundoHeader']) novaConfig.fundoHeader = `/uploads/${req.files['fundoHeader'][0].filename}`;
-        if (req.files['banner1']) novaConfig.banner1 = `/uploads/${req.files['banner1'][0].filename}`;
-        if (req.files['banner2']) novaConfig.banner2 = `/uploads/${req.files['banner2'][0].filename}`;
-        if (req.files['banner3']) novaConfig.banner3 = `/uploads/${req.files['banner3'][0].filename}`;
+        if (req.files['fundoSite']) configData.fundoSite = `/uploads/${req.files['fundoSite'][0].filename}`;
+        if (req.files['fundoHeader']) configData.fundoHeader = `/uploads/${req.files['fundoHeader'][0].filename}`;
+        if (req.files['banner1']) configData.banner1 = `/uploads/${req.files['banner1'][0].filename}`;
+        if (req.files['banner2']) configData.banner2 = `/uploads/${req.files['banner2'][0].filename}`;
+        if (req.files['banner3']) configData.banner3 = `/uploads/${req.files['banner3'][0].filename}`;
 
-        salvarJSON(ARQUIVO_CONFIG, novaConfig);
-        
-        // Se vier de um form HTML, redireciona. Se for AJAX, retorna JSON
-        if(req.xhr || (req.headers.accept && req.headers.accept.includes('json'))) {
-            res.json({ message: 'Loja atualizada com sucesso!', config: novaConfig });
+        const config = await Config.findOneAndUpdate({}, configData, { new: true, upsert: true });
+
+        if (req.xhr || (req.headers.accept && req.headers.accept.includes('json'))) {
+            res.json({ message: 'Salvo!', config });
         } else {
             res.redirect('/admin');
         }
 
     } catch (error) {
-        console.error("Erro no POST /api/config:", error);
-        res.status(500).json({ erro: 'Erro ao atualizar configurações' });
+        console.error("Erro config:", error);
+        res.status(500).json({ erro: 'Erro ao salvar' });
     }
 });
 
