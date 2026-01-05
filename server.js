@@ -7,7 +7,7 @@ const path = require('path');
 const session = require('express-session');
 const mongoose = require('mongoose');
 
-// 🔥 MUDANÇA: Biblioteca de sessão mais estável
+// Biblioteca de sessão (Mantida conforme seu código)
 const MongoDBStore = require('connect-mongodb-session')(session);
 
 const app = express();
@@ -21,7 +21,7 @@ mongoose.connect(process.env.MONGO_URI)
 // --- CONFIGURAÇÃO DA SESSÃO NO BANCO ---
 const store = new MongoDBStore({
     uri: process.env.MONGO_URI,
-    collection: 'sessions' // Nome da tabela onde ficarão os logins
+    collection: 'sessions'
 });
 
 store.on('error', function(error) {
@@ -63,7 +63,6 @@ const RevendedorSchema = new mongoose.Schema({
 });
 const Representante = mongoose.model('Representante', RevendedorSchema);
 
-// --- ALTERAÇÃO AQUI: Schema de Vendas atualizado para exclusão automática ---
 const VendaSchema = new mongoose.Schema({
     id_pedido: { type: Number, default: () => Date.now() }, 
     cliente: { type: Object }, 
@@ -72,17 +71,13 @@ const VendaSchema = new mongoose.Schema({
     representante: { type: String, default: null }, 
     status: { type: String, default: 'Pendente' },
     data: { type: Date, default: Date.now },
-    // Campo para controlar a exclusão automática
     dataCancelamento: { type: Date } 
 });
 
 // Configura o índice TTL (Time To Live). 
-// 2592000 segundos = 30 dias.
-// O registro será apagado 30 dias após a data definida em 'dataCancelamento'.
 VendaSchema.index({ dataCancelamento: 1 }, { expireAfterSeconds: 2592000 });
 
 const Venda = mongoose.model('Venda', VendaSchema);
-// --------------------------------------------------------------------------
 
 const CupomSchema = new mongoose.Schema({
     codigo: { type: String, unique: true, uppercase: true },
@@ -95,7 +90,7 @@ const ConfigSchema = new mongoose.Schema({
     whatsapp: String,
     fundoSite: String,
     fundoHeader: String,
-    banner1: String,
+    // banner1: String, // Mantido no schema por segurança, mas não será usado
     banner2: String,
     banner3: String,
     corDestaque: String,
@@ -282,6 +277,39 @@ app.post('/api/revendedores', isAuthenticated, async (req, res) => {
     }
 });
 
+// Bloquear/Desbloquear Revendedor
+app.post('/api/revendedores/:id/toggle', isAuthenticated, async (req, res) => {
+    try {
+        const rep = await Representante.findById(req.params.id);
+        if (!rep) return res.status(404).json({ error: 'Revendedor não encontrado' });
+
+        rep.ativo = !rep.ativo; // Inverte o status
+        await rep.save();
+
+        res.json({ success: true, novoStatus: rep.ativo });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao atualizar status' });
+    }
+});
+
+// 🔥 NOVA ROTA ADICIONADA: Deletar Revendedor
+app.delete('/api/revendedores/:id', isAuthenticated, async (req, res) => {
+    try {
+        const id = req.params.id;
+        const removido = await Representante.findByIdAndDelete(id);
+
+        if (!removido) {
+            return res.status(404).json({ error: 'Revendedor não encontrado' });
+        }
+
+        res.json({ success: true, message: 'Revendedor excluído com sucesso!' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Erro ao excluir revendedor' });
+    }
+});
+
 // ========================================================
 // 📦 API DE PRODUTOS
 // ========================================================
@@ -432,7 +460,6 @@ app.post('/api/vendas', async (req, res) => {
     }
 });
 
-// 🔥 ROTA DE CONFIRMAÇÃO CORRIGIDA
 app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -441,7 +468,6 @@ app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
         let venda;
         const idParam = req.params.id;
 
-        // 🛡️ CORREÇÃO: Verifica se o ID é numérico (id_pedido) ou String (MongoID)
         if (!isNaN(idParam)) {
             venda = await Venda.findOne({ id_pedido: idParam }).session(session);
         } else if (mongoose.Types.ObjectId.isValid(idParam)) {
@@ -458,7 +484,7 @@ app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
                 const indexVar = produto.variacoes.findIndex(v => 
                     (v.marca && v.marca === item.marca) ||
                     (v.tamanho && v.tamanho === item.marca) || 
-                    (v.marca === item.tamanho) // Tenta achar match cruzado
+                    (v.marca === item.tamanho) 
                 );
 
                 if (indexVar !== -1) {
@@ -489,20 +515,15 @@ app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
     }
 });
 
-// --- ALTERAÇÃO AQUI: Rota atualizada para marcar a data de cancelamento ---
 app.post('/api/venda/:id/cancelar', isAuthenticated, async (req, res) => {
     try {
         let filtro = { id_pedido: req.params.id };
-        // Garante que não quebre se o ID for string de Mongo
         if (mongoose.Types.ObjectId.isValid(req.params.id)) filtro = { _id: req.params.id };
 
         const venda = await Venda.findOne(filtro);
         if (!venda) return res.status(404).json({ message: 'Venda não encontrada' });
 
         venda.status = 'Cancelado';
-        
-        // Define a data de cancelamento como AGORA. 
-        // O MongoDB vai apagar automaticamente após 30 dias.
         venda.dataCancelamento = new Date(); 
         
         await venda.save();
@@ -511,7 +532,6 @@ app.post('/api/venda/:id/cancelar', isAuthenticated, async (req, res) => {
         res.status(500).json({ error: 'Erro ao cancelar' });
     }
 });
-// --------------------------------------------------------------------------
 
 // ========================================================
 // 🎨 CONFIGURAÇÕES
@@ -522,10 +542,11 @@ app.get('/api/config', async (req, res) => {
     res.json(config);
 });
 
+// 🔥 ALTERAÇÃO: Removido banner1 da lista de upload para evitar erros
 const configUpload = upload.fields([
     { name: 'fundoSite', maxCount: 1 },
     { name: 'fundoHeader', maxCount: 1 },
-    { name: 'banner1', maxCount: 1 },
+    // { name: 'banner1', maxCount: 1 }, // DESATIVADO
     { name: 'banner2', maxCount: 1 },
     { name: 'banner3', maxCount: 1 }
 ]);
@@ -536,7 +557,10 @@ app.post('/api/config', isAuthenticated, configUpload, async (req, res) => {
 
         if (req.files['fundoSite']) configData.fundoSite = `/uploads/${req.files['fundoSite'][0].filename}`;
         if (req.files['fundoHeader']) configData.fundoHeader = `/uploads/${req.files['fundoHeader'][0].filename}`;
-        if (req.files['banner1']) configData.banner1 = `/uploads/${req.files['banner1'][0].filename}`;
+        
+        // 🔥 ALTERAÇÃO: Removido processamento do banner1
+        // if (req.files['banner1']) configData.banner1 = `/uploads/${req.files['banner1'][0].filename}`;
+        
         if (req.files['banner2']) configData.banner2 = `/uploads/${req.files['banner2'][0].filename}`;
         if (req.files['banner3']) configData.banner3 = `/uploads/${req.files['banner3'][0].filename}`;
 

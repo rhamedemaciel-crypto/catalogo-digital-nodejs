@@ -458,7 +458,7 @@ window.filtrarPedidos = function(filtro) {
 };
 
 // ==========================================
-// 5. REVENDEDORES (NOVO SISTEMA)
+// 5. REVENDEDORES (CORRIGIDO + DELETE)
 // ==========================================
 async function carregarRevendedores() {
     const tbody = document.getElementById('tabela-revendedores');
@@ -468,19 +468,75 @@ async function carregarRevendedores() {
         const res = await fetch(`${API_URL}/api/revendedores`);
         const reps = await res.json();
         
-        tbody.innerHTML = reps.map(r => `
+        tbody.innerHTML = reps.map(r => {
+            // Lógica para definir a cor e texto do botão baseada no status
+            const isAtivo = r.ativo !== false; // Padrão é true
+            const btnCor = isAtivo ? 'red' : 'green';
+            const btnTexto = isAtivo ? 'Bloquear' : 'Desbloquear';
+            const btnOpacity = isAtivo ? '0.5' : '1';
+
+            return `
             <tr>
-                <td style="color:white;">${r.nome}</td>
+                <td style="color:white;">
+                    ${r.nome} 
+                    ${!isAtivo ? '<span style="color:red; font-size:0.8em; margin-left:5px;">(BLOQUEADO)</span>' : ''}
+                </td>
                 <td>
                     <span style="background:#222; color:#00ff88; padding:2px 5px; font-family:monospace; border-radius:3px;">?ref=${r.slug}</span>
                     <button onclick="copiarLink('${r.slug}')" style="border:none; background:none; cursor:pointer; font-size:1.2em; color:cyan; margin-left:5px;">📋</button>
                 </td>
                 <td style="color:#aaa;">${r.whatsapp || '-'}</td>
-                <td><button style="color:red; background:none; border:none; cursor:pointer; opacity:0.5;">Bloquear</button></td>
+                <td style="display:flex; gap: 5px; align-items: center;">
+                    <button onclick="toggleRevendedor('${r._id}')" style="color:${btnCor}; background:none; border:1px solid ${btnCor}; padding:5px 10px; border-radius:4px; cursor:pointer; opacity:${btnOpacity}; font-weight:bold;">
+                        ${btnTexto}
+                    </button>
+                    <button onclick="deletarRevendedor('${r._id}')" style="background:none; border:1px solid #ff4444; color:#ff4444; padding:5px 10px; border-radius:4px; cursor:pointer;" title="Excluir Permanentemente">
+                        🗑️
+                    </button>
+                </td>
             </tr>
-        `).join('');
+        `}).join('');
     } catch (e) { console.error("Erro reps", e); }
 }
+
+// Nova função para fazer a chamada na API
+window.toggleRevendedor = async function(id) {
+    if(!confirm("Deseja alterar o status de bloqueio deste revendedor?")) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/revendedores/${id}/toggle`, { method: 'POST' });
+        const data = await res.json();
+        
+        if(data.success) {
+            carregarRevendedores(); // Recarrega a lista para mostrar o novo status
+        } else {
+            alert("Erro ao atualizar: " + (data.error || "Desconhecido"));
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Erro de conexão.");
+    }
+};
+
+// Nova função para deletar
+window.deletarRevendedor = async function(id) {
+    if(!confirm("TEM CERTEZA? Isso excluirá o revendedor permanentemente e o link dele deixará de funcionar.")) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/revendedores/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        
+        if(res.ok && data.success) {
+            alert(data.message);
+            carregarRevendedores(); // Atualiza a lista
+        } else {
+            alert("Erro: " + (data.error || "Não foi possível excluir"));
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Erro de conexão ao tentar excluir.");
+    }
+};
 
 async function salvarRevendedor(e) {
     e.preventDefault();
