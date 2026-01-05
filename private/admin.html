@@ -208,13 +208,21 @@
                         </div>
                         <div class="form-group"><label>Imagem</label><input type="file" name="imagem" accept="image/*"></div>
                         
-                        <div class="form-group">
-                            <label>Variações (JSON Avançado)</label>
-                            <textarea name="variacoes" rows="3" placeholder='Ex: [{"marca":"P", "estoque":10, "preco":50}]' style="width:100%; background:#000; border:1px solid #444; color:white; padding:10px; border-radius:6px;"></textarea>
-                            <small style="color:#666;">Use formato JSON ou deixe vazio para produto simples.</small>
+                        <div class="form-group" style="margin-top:20px; border-top:1px solid #333; padding-top:20px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <label style="margin:0;">Variações de Estoque</label>
+                                <button type="button" onclick="adicionarLinhaVariacao()" class="btn-add" style="margin:0; padding:5px 10px; font-size:0.8em; cursor:pointer;">
+                                    + Adicionar Opção
+                                </button>
+                            </div>
+                            
+                            <div id="container-variacoes"></div>
+                            
+                            <small style="color:#666; display:block; margin-top:5px;">
+                                Ex: Adicione cores e tamanhos. Se o produto for único, adicione apenas uma variação "Único".
+                            </small>
                         </div>
-
-                        <button type="submit" class="btn-acao btn-salvar">SALVAR PRODUTO</button>
+                        <button type="submit" class="btn-acao btn-salvar" style="margin-top:20px;">SALVAR PRODUTO</button>
                     </form>
                 </div>
                 <div class="card">
