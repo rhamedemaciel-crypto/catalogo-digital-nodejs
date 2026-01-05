@@ -7,7 +7,11 @@ const path = require('path');
 const session = require('express-session');
 const mongoose = require('mongoose');
 
-// Biblioteca de sessão (Mantida conforme seu código)
+// --- IMPORTS DO CLOUDINARY ---
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// Biblioteca de sessão
 const MongoDBStore = require('connect-mongodb-session')(session);
 
 const app = express();
@@ -107,20 +111,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
-// --- UPLOAD (MULTER) ---
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const dir = path.join(__dirname, 'public', 'uploads');
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        cb(null, dir);
-    },
-    filename: (req, file, cb) => {
-        const nomeLimpo = file.originalname.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
-        cb(null, Date.now() + '-' + nomeLimpo);
-    }
+// --- CONFIGURAÇÃO CLOUDINARY (Substituindo diskStorage) ---
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'catalogo-digital', // Nome da pasta no Cloudinary
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    },
+});
+
 const upload = multer({ storage: storage });
 
 
@@ -293,7 +298,7 @@ app.post('/api/revendedores/:id/toggle', isAuthenticated, async (req, res) => {
     }
 });
 
-// 🔥 NOVA ROTA ADICIONADA: Deletar Revendedor
+// Deletar Revendedor
 app.delete('/api/revendedores/:id', isAuthenticated, async (req, res) => {
     try {
         const id = req.params.id;
@@ -336,10 +341,11 @@ app.post('/api/produtos', isAuthenticated, upload.single('imagem'), async (req, 
             ? Math.min(...variacoes.map(v => parseFloat(v.preco || v.preco_venda || 0))) 
             : (parseFloat(req.body.preco) || 0);
 
+        // ALTERAÇÃO AQUI: Salva o path do Cloudinary diretamente
         const novoProduto = await Produto.create({
             nome: req.body.nome,
             categoria: req.body.categoria,
-            imagem: req.file ? `/uploads/${req.file.filename}` : '',
+            imagem: req.file ? req.file.path : '', 
             variacoes: variacoes,
             ativo: true,
             preco: precoBase
@@ -365,7 +371,9 @@ app.put('/api/produtos/:id', isAuthenticated, upload.single('imagem'), async (re
             variacoes = req.body.variacoes || [];
         }
 
-        const imagemFinal = req.file ? `/uploads/${req.file.filename}` : produtoAtual.imagem;
+        // ALTERAÇÃO AQUI: Salva o path do Cloudinary se houver nova imagem
+        const imagemFinal = req.file ? req.file.path : produtoAtual.imagem;
+        
         const precoBase = variacoes.length > 0 
             ? Math.min(...variacoes.map(v => parseFloat(v.preco || v.preco_venda || 0))) 
             : (parseFloat(req.body.preco) || 0);
@@ -542,7 +550,7 @@ app.get('/api/config', async (req, res) => {
     res.json(config);
 });
 
-// 🔥 ALTERAÇÃO: Removido banner1 da lista de upload para evitar erros
+// Campos de upload
 const configUpload = upload.fields([
     { name: 'fundoSite', maxCount: 1 },
     { name: 'fundoHeader', maxCount: 1 },
@@ -555,14 +563,12 @@ app.post('/api/config', isAuthenticated, configUpload, async (req, res) => {
     try {
         let configData = { ...req.body };
 
-        if (req.files['fundoSite']) configData.fundoSite = `/uploads/${req.files['fundoSite'][0].filename}`;
-        if (req.files['fundoHeader']) configData.fundoHeader = `/uploads/${req.files['fundoHeader'][0].filename}`;
+        // ALTERAÇÃO AQUI: Salva o path do Cloudinary diretamente
+        if (req.files['fundoSite']) configData.fundoSite = req.files['fundoSite'][0].path;
+        if (req.files['fundoHeader']) configData.fundoHeader = req.files['fundoHeader'][0].path;
         
-        // 🔥 ALTERAÇÃO: Removido processamento do banner1
-        // if (req.files['banner1']) configData.banner1 = `/uploads/${req.files['banner1'][0].filename}`;
-        
-        if (req.files['banner2']) configData.banner2 = `/uploads/${req.files['banner2'][0].filename}`;
-        if (req.files['banner3']) configData.banner3 = `/uploads/${req.files['banner3'][0].filename}`;
+        if (req.files['banner2']) configData.banner2 = req.files['banner2'][0].path;
+        if (req.files['banner3']) configData.banner3 = req.files['banner3'][0].path;
 
         const config = await Config.findOneAndUpdate({}, configData, { new: true, upsert: true });
 
