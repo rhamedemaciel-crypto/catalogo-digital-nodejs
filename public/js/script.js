@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarProdutos();  // 2. Busca e exibe os produtos
     carregarCarrinhoLocal();
     atualizarContador();
+    verificarRevendedor(); // 3. NOVA FUNÇÃO: Checa se tem revendedor na URL
     
     // Configura a busca dinâmica
     const buscaInput = document.getElementById('campo-busca') || document.getElementById('searchInput'); // Suporta ambos os nomes
@@ -25,6 +26,22 @@ document.addEventListener('DOMContentLoaded', () => {
         buscaInput.addEventListener('input', filtrarProdutos);
     }
 });
+
+/* --- SISTEMA DE REVENDEDORES (CORRIGIDO E SIMPLIFICADO) --- */
+function verificarRevendedor() {
+    // 🛡️ MUDANÇA: Captura imediata. Se tem ref na URL, salva no navegador.
+    // Isso garante que o revendedor seja pego mesmo se a internet oscilar.
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref'); 
+
+    if (ref) {
+        localStorage.setItem('catalogo_ref', ref);
+        console.log(`Revendedor capturado: ${ref}`);
+        
+        // (Opcional) Limpa a URL para ficar mais bonita, mas mantendo o ref salvo
+        // window.history.replaceState({}, document.title, "/");
+    }
+}
 
 /* --- SISTEMA DE TEMAS E CONFIGURAÇÕES --- */
 async function carregarTema() {
@@ -173,7 +190,7 @@ function filtrarProdutos() {
             <div class="card-info">
                 <h3>${p.nome}</h3>
                 <div class="preco">${formatarMoeda(menorPreco)}</div>
-                <button onclick="abrirModal(${p.id})">COMPRAR</button>
+                <button onclick="abrirModal('${p._id || p.id}')">COMPRAR</button>
             </div>
         `;
         container.appendChild(div);
@@ -182,7 +199,8 @@ function filtrarProdutos() {
 
 /* --- MODAL DE DETALHES --- */
 function abrirModal(id) {
-    produtoSelecionado = produtosGlobais.find(p => p.id === id);
+    // Tenta encontrar pelo ID numérico ou String (Mongo ID)
+    produtoSelecionado = produtosGlobais.find(p => p.id == id || p._id == id);
     if(!produtoSelecionado) return;
 
     document.getElementById('modal-titulo').innerText = produtoSelecionado.nome;
@@ -204,7 +222,7 @@ function abrirModal(id) {
         variacaoSelecionada = { 
             marca: 'Único', 
             preco_venda: produtoSelecionado.preco || 0, 
-            estoque: 999 
+            estoque: produtoSelecionado.estoque || 999 
         };
         lista.innerHTML = '<p style="color:#ccc">Produto único</p>';
         document.getElementById('modal-preco').innerText = formatarMoeda(produtoSelecionado.preco || 0);
@@ -286,7 +304,7 @@ function adicionarAoCarrinhoModal() {
             return alert("Estoque limite atingido no carrinho.");
         }
         existente.qtd += qtd;
-        existente.total = existingItem.qtd * existingItem.preco;
+        existente.total = existente.qtd * existente.preco;
     } else {
         carrinho.push({
             produto: produtoSelecionado.nome,
@@ -385,7 +403,7 @@ async function aplicarCupom() {
     }
 }
 
-/* --- FINALIZAR COMPRA (Melhorado e Conectado ao Server) --- */
+/* --- FINALIZAR COMPRA (ATUALIZADO COM REVENDEDOR) --- */
 async function finalizarCompra() {
     if(carrinho.length === 0) return alert("Seu carrinho está vazio!");
     
@@ -402,11 +420,15 @@ async function finalizarCompra() {
     let totalBruto = carrinho.reduce((acc, item) => acc + (item.preco * item.qtd), 0);
     let totalFinal = totalBruto * (1 - descontoAtual/100);
 
-    // Preparar dados para o Servidor (Conforme Passo 1)
+    // Recupera Revendedor Salvo (Se houver)
+    const representante = localStorage.getItem('catalogo_ref');
+
+    // Preparar dados para o Servidor (Conforme novo Schema)
     const pedidoParaSalvar = {
-        cliente: nome,
-        produtos: carrinho, // Alterado de 'itens' para 'produtos' para padronizar
+        cliente: { nome: nome }, // Ajustado para bater com o Schema
+        produtos: carrinho, 
         total: totalFinal,
+        representante: representante, // <--- CAMPO NOVO IMPORTANTE
         data: new Date().toISOString()
     };
 
@@ -424,7 +446,7 @@ async function finalizarCompra() {
             // 2. Se salvou, monta a mensagem do WhatsApp
             let msg = `*NOVO PEDIDO - ${configLoja.nomeLoja || 'LOJA'}* 🛒\n\n`;
             msg += `*Cliente:* ${nome}\n`;
-            if(resultado.id) msg += `*Pedido #:* ${resultado.id}\n`;
+            if(resultado.id || resultado.pedidoId) msg += `*Pedido #:* ${resultado.id || resultado.pedidoId}\n`;
             msg += `------------------------------\n`;
             
             carrinho.forEach(item => {
@@ -443,6 +465,11 @@ async function finalizarCompra() {
                 msg += `*TOTAL: ${formatarMoeda(totalBruto)}* ✅\n\n`;
             }
             
+            // Adiciona o nome do representante na mensagem do Zap (Opcional, ajuda o dono a ver rápido)
+            if (representante) {
+                msg += `(Venda via representante: ${representante})\n`;
+            }
+
             msg += `Aguardo instruções de pagamento!`;
 
             // Configura telefone

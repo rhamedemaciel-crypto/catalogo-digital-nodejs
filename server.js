@@ -63,6 +63,7 @@ const RevendedorSchema = new mongoose.Schema({
 });
 const Representante = mongoose.model('Representante', RevendedorSchema);
 
+// --- ALTERAÇÃO AQUI: Schema de Vendas atualizado para exclusão automática ---
 const VendaSchema = new mongoose.Schema({
     id_pedido: { type: Number, default: () => Date.now() }, 
     cliente: { type: Object }, 
@@ -70,9 +71,18 @@ const VendaSchema = new mongoose.Schema({
     total: Number,
     representante: { type: String, default: null }, 
     status: { type: String, default: 'Pendente' },
-    data: { type: Date, default: Date.now }
+    data: { type: Date, default: Date.now },
+    // Campo para controlar a exclusão automática
+    dataCancelamento: { type: Date } 
 });
+
+// Configura o índice TTL (Time To Live). 
+// 2592000 segundos = 30 dias.
+// O registro será apagado 30 dias após a data definida em 'dataCancelamento'.
+VendaSchema.index({ dataCancelamento: 1 }, { expireAfterSeconds: 2592000 });
+
 const Venda = mongoose.model('Venda', VendaSchema);
+// --------------------------------------------------------------------------
 
 const CupomSchema = new mongoose.Schema({
     codigo: { type: String, unique: true, uppercase: true },
@@ -422,14 +432,20 @@ app.post('/api/vendas', async (req, res) => {
     }
 });
 
+// 🔥 ROTA DE CONFIRMAÇÃO CORRIGIDA
 app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        let venda = await Venda.findOne({ id_pedido: req.params.id }).session(session);
-        if (!venda && mongoose.Types.ObjectId.isValid(req.params.id)) {
-            venda = await Venda.findById(req.params.id).session(session);
+        let venda;
+        const idParam = req.params.id;
+
+        // 🛡️ CORREÇÃO: Verifica se o ID é numérico (id_pedido) ou String (MongoID)
+        if (!isNaN(idParam)) {
+            venda = await Venda.findOne({ id_pedido: idParam }).session(session);
+        } else if (mongoose.Types.ObjectId.isValid(idParam)) {
+            venda = await Venda.findById(idParam).session(session);
         }
 
         if (!venda) throw new Error('Venda não encontrada');
@@ -473,21 +489,29 @@ app.post('/api/venda/:id/confirmar', isAuthenticated, async (req, res) => {
     }
 });
 
+// --- ALTERAÇÃO AQUI: Rota atualizada para marcar a data de cancelamento ---
 app.post('/api/venda/:id/cancelar', isAuthenticated, async (req, res) => {
     try {
         let filtro = { id_pedido: req.params.id };
+        // Garante que não quebre se o ID for string de Mongo
         if (mongoose.Types.ObjectId.isValid(req.params.id)) filtro = { _id: req.params.id };
 
         const venda = await Venda.findOne(filtro);
         if (!venda) return res.status(404).json({ message: 'Venda não encontrada' });
 
         venda.status = 'Cancelado';
+        
+        // Define a data de cancelamento como AGORA. 
+        // O MongoDB vai apagar automaticamente após 30 dias.
+        venda.dataCancelamento = new Date(); 
+        
         await venda.save();
         res.json({ message: 'Venda cancelada!' });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao cancelar' });
     }
 });
+// --------------------------------------------------------------------------
 
 // ========================================================
 // 🎨 CONFIGURAÇÕES
